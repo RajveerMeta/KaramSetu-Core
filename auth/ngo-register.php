@@ -42,8 +42,8 @@ ob_start();
 
         <!-- Application Form -->
         <div id="ngoApplicationFormContainer" class="bg-white rounded-3xl shadow-sm border border-gold/20 overflow-hidden">
-            <form id="ngoApplicationForm" action="#" method="POST" class="p-6 md:p-10 space-y-12">
-                
+        <form id="ngoApplicationForm" action="#" method="POST" class="p-6 md:p-10 space-y-12 validation-form" novalidate
+>                
                 
                 <!-- Section 01: Organization Details -->
                 <section>
@@ -57,7 +57,7 @@ ob_start();
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="md:col-span-2">
                             <label for="ngo_name" class="block text-sm font-bold text-charcoal mb-2">NGO / Organization Name *</label>
-                            <input type="text" id="ngo_name" name="ngo_name" required data-no-name-val="true" class="w-full px-4 py-3 border border-charcoal/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-gold focus:border-gold transition-all bg-ivory/30 focus:bg-white text-charcoal" placeholder="Enter the registered name of your organization" data-validate="required">
+                            <input type="text" id="ngo_name" name="ngo_name" required data-no-name-val="true" class="w-full px-4 py-3 border border-charcoal/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-gold focus:border-gold transition-all bg-ivory/30 focus:bg-white text-charcoal" placeholder="Enter the registered name of your organization"  data-validate="required">
                         </div>
                         
                         <div>
@@ -271,7 +271,7 @@ ob_start();
                             <label class="block text-sm font-bold text-charcoal mb-3">Areas You Serve *</label>
                             <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
                                 <label class="flex items-center space-x-3 p-3 border border-charcoal/10 rounded-xl cursor-pointer hover:bg-ivory/50 transition-colors">
-                                    <input type="checkbox" name="service_areas[]" value="Local Community" class="h-4 w-4 text-forest focus:ring-gold border-charcoal/30 rounded accent-forest">
+                                    <input type="checkbox" name="service_areas[]" data-validate="required min-items" data-min-items="1" value="Local Community" class="h-4 w-4 text-forest focus:ring-gold border-charcoal/30 rounded accent-forest">
                                     <span class="text-sm text-charcoal font-medium">Local Community</span>
                                 </label>
                                 <label class="flex items-center space-x-3 p-3 border border-charcoal/10 rounded-xl cursor-pointer hover:bg-ivory/50 transition-colors">
@@ -372,53 +372,6 @@ ob_start();
     </div>
 </div>
 
-<script>
-document.addEventListener("DOMContentLoaded", function() {
-    $('#ngoApplicationForm').on('submit', function(e) {
-        e.preventDefault();
-        
-        let isValid = true;
-        $(this).find('[required]').each(function() {
-            if (!$(this).val() && !$(this).is(':checkbox')) {
-                isValid = false;
-                $(this).addClass('border-red-500');
-            } else if ($(this).is(':checkbox') && !$(this).is(':checked')) {
-                isValid = false;
-                $(this).next().addClass('text-red-500');
-            } else {
-                $(this).removeClass('border-red-500');
-                if ($(this).is(':checkbox')) $(this).next().removeClass('text-red-500');
-            }
-        });
-        
-        if ($('input[name="service_areas[]"]:checked').length === 0) {
-            isValid = false;
-            $('input[name="service_areas[]"]').parent().addClass('border-red-500');
-        } else {
-            $('input[name="service_areas[]"]').parent().removeClass('border-red-500');
-        }
-        
-        if (isValid) {
-            $('#ngoApplicationForm').hide();
-            $('#successState').fadeIn();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        } else {
-            alert("Please fill all required fields correctly.");
-        }
-    });
-    
-    $('#ngoApplicationForm [required]').on('input change', function() {
-        $(this).removeClass('border-red-500');
-        if ($(this).is(':checkbox')) $(this).next().removeClass('text-red-500');
-    });
-    
-    $('input[name="service_areas[]"]').on('change', function() {
-        if ($('input[name="service_areas[]"]:checked').length > 0) {
-            $('input[name="service_areas[]"]').parent().removeClass('border-red-500');
-        }
-    });
-});
-</script>
 <?php
 $content = ob_get_clean();
 require_once __DIR__ . '/../includes/layouts/main.php';

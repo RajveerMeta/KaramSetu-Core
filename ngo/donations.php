@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../includes/functions.php';
 ob_start();
 ?>
@@ -156,46 +156,11 @@ ob_start();
     </div>
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const typeFilter = document.getElementById('typeFilter');
-    const statusFilter = document.getElementById('statusFilter');
-    const rows = document.querySelectorAll('#contributionsList tr');
-    const noResults = document.getElementById('noResults');
 
-    function filterTable() {
-        const type = typeFilter.value;
-        const status = statusFilter.value;
-        let visibleCount = 0;
-
-        rows.forEach(row => {
-            const rowType = row.getAttribute('data-type');
-            const rowStatus = row.getAttribute('data-status');
-            
-            const matchType = (type === 'all' || type === rowType);
-            const matchStatus = (status === 'all' || status === rowStatus);
-
-            if (matchType && matchStatus) {
-                row.style.display = '';
-                visibleCount++;
-            } else {
-                row.style.display = 'none';
-            }
-        });
-
-        if (visibleCount === 0) {
-            noResults.classList.remove('hidden');
-        } else {
-            noResults.classList.add('hidden');
-        }
-    }
-
-    typeFilter.addEventListener('change', filterTable);
-    statusFilter.addEventListener('change', filterTable);
-});
-</script>
 
 <?php
 $content = ob_get_clean();
 require_once __DIR__ . '/../includes/layouts/main.php';
 ?>
+
+

@@ -44,7 +44,7 @@ ob_start();
                 </div>
                 
                 <div class="flex flex-wrap gap-3 mt-4 pt-4 border-t border-charcoal/10">
-                    <a href="<?= baseUrl('pages/event-details.php?id=1') ?>" class="flex-1 text-center bg-ivory text-forest font-bold py-2 rounded-xl hover:bg-forest/5 transition-colors border border-charcoal/10 text-sm">View Details</a>
+                    <a href="<?= baseUrl('ngo/events/details.php?id=1') ?>" class="flex-1 text-center bg-ivory text-forest font-bold py-2 rounded-xl hover:bg-forest/5 transition-colors border border-charcoal/10 text-sm">View Details</a>
                     <a href="<?= baseUrl('ngo/events/edit.php?id=1') ?>" class="flex-1 text-center bg-white text-gold font-bold py-2 rounded-xl hover:bg-gold/5 transition-colors border border-gold/30 text-sm">Edit</a>
                 </div>
             </div>
@@ -71,7 +71,7 @@ ob_start();
                 </div>
                 
                 <div class="flex flex-wrap gap-3 mt-4 pt-4 border-t border-charcoal/10">
-                    <a href="<?= baseUrl('pages/event-details.php?id=2') ?>" class="flex-1 text-center bg-ivory text-forest font-bold py-2 rounded-xl hover:bg-forest/5 transition-colors border border-charcoal/10 text-sm">View Details</a>
+                    <a href="<?= baseUrl('ngo/events/details.php?id=2') ?>" class="flex-1 text-center bg-ivory text-forest font-bold py-2 rounded-xl hover:bg-forest/5 transition-colors border border-charcoal/10 text-sm">View Details</a>
                     <a href="<?= baseUrl('ngo/events/edit.php?id=2') ?>" class="flex-1 text-center bg-white text-gold font-bold py-2 rounded-xl hover:bg-gold/5 transition-colors border border-gold/30 text-sm">Edit</a>
                 </div>
             </div>
@@ -103,7 +103,7 @@ ob_start();
                 </div>
                 
                 <div class="flex flex-wrap gap-3 mt-4 pt-4 border-t border-charcoal/10">
-                    <a href="<?= baseUrl('pages/event-details.php?id=3') ?>" class="flex-1 text-center bg-ivory text-charcoal font-bold py-2 rounded-xl hover:bg-charcoal/5 transition-colors border border-charcoal/10 text-sm">View Details</a>
+                    <a href="<?= baseUrl('ngo/events/details.php?id=3') ?>" class="flex-1 text-center bg-ivory text-charcoal font-bold py-2 rounded-xl hover:bg-charcoal/5 transition-colors border border-charcoal/10 text-sm">View Details</a>
                     <!-- Removed edit for completed event typically, or keep it generic -->
                 </div>
             </div>

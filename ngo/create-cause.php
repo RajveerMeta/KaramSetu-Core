@@ -15,7 +15,7 @@ ob_start();
             <h1 class="text-xl md:text-3xl font-serif font-bold text-forest mb-2">Create New Cause</h1>
             <p class="text-charcoal-light mb-8">Start a new fundraising campaign for your organization.</p>
             
-            <form id="causeForm" class="space-y-6">
+            <form id="causeForm" class="space-y-6 validation-form " novalidate onsubmit="return false;">
                 <!-- Success Message -->
                 <div id="successMsg" class="hidden p-4 rounded-xl bg-forest/10 border border-forest text-forest font-bold text-sm mb-6">
                     Cause created successfully!
@@ -56,11 +56,11 @@ ob_start();
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-bold text-charcoal mb-1">Start Date</label>
-                            <input type="date" id="start_date" class="w-full px-4 py-3 border border-charcoal/20 rounded-xl text-charcoal focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent transition-all bg-ivory/30 focus:bg-white">
+                            <input type="date" id="start_date" class="w-full px-4 py-3 border border-charcoal/20 rounded-xl text-charcoal focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent transition-all bg-ivory/30 focus:bg-white" data-validate="required">
                         </div>
                         <div>
                             <label class="block text-sm font-bold text-charcoal mb-1">End Date</label>
-                            <input type="date" id="end_date" class="w-full px-4 py-3 border border-charcoal/20 rounded-xl text-charcoal focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent transition-all bg-ivory/30 focus:bg-white">
+                            <input type="date" id="end_date" class="w-full px-4 py-3 border border-charcoal/20 rounded-xl text-charcoal focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent transition-all bg-ivory/30 focus:bg-white" data-validate="required">
                         </div>
                     </div>
                 </div>
@@ -73,22 +73,7 @@ ob_start();
         </div>
     </div>
 </div>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('causeForm');
-    if (form) {
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            document.getElementById('successMsg').classList.remove('hidden');
-            window.scrollTo({top: 0, behavior: 'smooth'});
-            form.reset();
-            setTimeout(() => {
-                document.getElementById('successMsg').classList.add('hidden');
-            }, 5000);
-        });
-    }
-});
-</script>
+
 <?php
 $content = ob_get_clean();
 require_once __DIR__ . '/../includes/layouts/main.php';

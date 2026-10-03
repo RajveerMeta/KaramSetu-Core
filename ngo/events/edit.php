@@ -15,7 +15,7 @@ ob_start();
             <h1 class="text-xl md:text-3xl font-serif font-bold text-forest mb-2">Edit Event</h1>
             <p class="text-charcoal-light mb-8">Update the details of your scheduled event.</p>
             
-            <form id="eventForm" class="space-y-6">
+            <form id="eventForm" class="space-y-6 validation-form" novalidate>
                 <!-- Success Message -->
                 <div id="successMsg" class="hidden p-4 rounded-xl bg-forest/10 border border-forest text-forest font-bold text-sm mb-6">
                     Event updated successfully.
@@ -29,7 +29,7 @@ ob_start();
                     
                     <div>
                         <label class="block text-sm font-bold text-charcoal mb-1">Category <span class="text-red-500">*</span></label>
-                        <select id="category" required class="w-full px-4 py-3 border border-charcoal/20 rounded-xl text-charcoal focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent transition-all bg-ivory/30 focus:bg-white appearance-none" data-validate="required">
+                        <select id="category"  class="w-full px-4 py-3 border border-charcoal/20 rounded-xl text-charcoal focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent transition-all bg-ivory/30 focus:bg-white appearance-none" data-validate="required">
                             <option value="fundraiser" selected>Fundraiser</option>
                             <option value="workshop">Workshop / Skill Building</option>
                             <option value="health">Health Camp</option>
@@ -81,21 +81,7 @@ ob_start();
         </div>
     </div>
 </div>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('eventForm');
-    if (form) {
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            document.getElementById('successMsg').classList.remove('hidden');
-            window.scrollTo({top: 0, behavior: 'smooth'});
-            setTimeout(() => {
-                document.getElementById('successMsg').classList.add('hidden');
-            }, 5000);
-        });
-    }
-});
-</script>
+
 <?php
 $content = ob_get_clean();
 require_once __DIR__ . '/../../includes/layouts/main.php';

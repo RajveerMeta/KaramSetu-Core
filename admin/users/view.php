@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../../includes/functions.php';
 
 $user = [
@@ -229,7 +229,7 @@ ob_start();
                         <tr class="hover:bg-ivory/30 transition-colors">
                             <td class="px-6 py-4 text-sm font-medium text-charcoal"><?= e($contrib['cause']) ?></td>
                             <td class="px-6 py-4 text-sm text-charcoal-light"><?= e($contrib['type']) ?></td>
-                            <td class="px-6 py-4 text-sm font-medium <?= $contrib['amount'] === '—' ? 'text-charcoal-light' : 'text-forest' ?>">
+                            <td class="px-6 py-4 text-sm font-medium <?= $contrib['amount'] === 'â€”' ? 'text-charcoal-light' : 'text-forest' ?>">
                                 <?= e($contrib['amount']) ?>
                             </td>
                             <td class="px-6 py-4 text-sm text-charcoal-light"><?= e($contrib['date']) ?></td>
@@ -442,3 +442,5 @@ ob_start();
 $content = ob_get_clean();
 require_once __DIR__ . '/../../includes/layouts/admin.php';
 ?>
+
+

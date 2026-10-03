@@ -16,7 +16,7 @@ ob_start();
                 <p class="text-charcoal-light">Create an account to start your journey.</p>
             </div>
             
-            <form id="registerForm" class="space-y-6" action="#" method="POST" data-success-redirect="<?= baseUrl('auth/login.php') ?>" novalidate>
+            <form id="registerForm" class="space-y-6 validation-form" action="#" method="POST" data-success-redirect="<?= baseUrl('auth/login.php') ?>" novalidate>
                 
                 <div class="space-y-5">
                     <div class="relative pb-1">

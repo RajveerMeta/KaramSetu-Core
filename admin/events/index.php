@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../../includes/functions.php';
 
 $events = [
@@ -430,55 +430,9 @@ ob_start();
         const rows = document.querySelectorAll('.event-row');
         const emptyState = document.getElementById('emptyState');
 
-        function applyFilters() {
-            const searchTerm = searchInput.value.toLowerCase().trim();
-            const status = filterStatus.value;
-            const category = filterCategory.value;
-            let visibleCount = 0;
-
-            rows.forEach(row => {
-                const rowName = row.getAttribute('data-name');
-                const rowNgo = row.getAttribute('data-ngo');
-                const rowLocation = row.getAttribute('data-location');
-                const rowStatus = row.getAttribute('data-status');
-                const rowCategory = row.getAttribute('data-category');
-                
-                const matchesSearch = searchTerm === '' || 
-                                      rowName.includes(searchTerm) || 
-                                      rowNgo.includes(searchTerm) || 
-                                      rowLocation.includes(searchTerm);
-                                      
-                const matchesStatus = status === '' || rowStatus === status;
-                const matchesCategory = category === '' || rowCategory === category;
-                
-                if (matchesSearch && matchesStatus && matchesCategory) {
-                    row.style.display = '';
-                    visibleCount++;
-                } else {
-                    row.style.display = 'none';
-                }
-            });
-
-            if (visibleCount === 0) {
-                emptyState.classList.remove('hidden');
-            } else {
-                emptyState.classList.add('hidden');
-            }
-        }
-
-        searchInput.addEventListener('input', applyFilters);
-        filterStatus.addEventListener('change', applyFilters);
-        filterCategory.addEventListener('change', applyFilters);
-        filterDate.addEventListener('change', applyFilters); // Trigger visual update
-        btnSearch.addEventListener('click', applyFilters);
         
-        btnClear.addEventListener('click', function() {
-            searchInput.value = '';
-            filterStatus.value = '';
-            filterCategory.value = '';
-            filterDate.value = '';
-            applyFilters();
-        });
+        
+        
 
         const statusModal = document.getElementById('statusModal');
         const btnConfirmStatus = document.getElementById('btnConfirmStatus');
@@ -558,7 +512,7 @@ ob_start();
                     showAlert('Event activated successfully.', 'success');
                 }
                 
-                applyFilters();
+                
             }
         });
 
@@ -591,3 +545,4 @@ ob_start();
 $content = ob_get_clean();
 require_once __DIR__ . '/../../includes/layouts/admin.php';
 ?>
+

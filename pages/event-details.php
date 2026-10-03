@@ -202,7 +202,7 @@ if (!$event) {
                     ?>
                     
                     <div 
-                        class="bg-white p-6 md:p-8 rounded-3xl border border-gold/30 shadow-md">
+                        id="ticketBookingCard" data-ticket-price="<?= e($price) ?>" class="bg-white p-6 md:p-8 rounded-3xl border border-gold/30 shadow-md">
                         
                         <h3 class="text-2xl md:text-4xl font-serif text-forest mb-6">Book Tickets</h3>
                         
@@ -222,7 +222,7 @@ if (!$event) {
                                         <button id="donationMinusBtn" class="w-12 h-12 flex flex-col md:flex-row items-center justify-center rounded-lg bg-white border border-gold/20 text-forest hover:bg-forest hover:text-ivory transition-colors shadow-sm">
                                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path></svg>
                                         </button>
-                                        <span class="text-2xl md:text-4xl font-serif text-forest w-16 text-center">1</span>
+                                        <span id="donationCountDisplay"class="text-2xl md:text-4xl font-serif text-forest w-16 text-center">1</span>
                                         <button id="donationPlusBtn" class="w-12 h-12 flex flex-col md:flex-row items-center justify-center rounded-lg bg-white border border-gold/20 text-forest hover:bg-forest hover:text-ivory transition-colors shadow-sm">
                                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                                         </button>
@@ -231,7 +231,7 @@ if (!$event) {
                                 
                                 <div class="flex flex-col md:flex-row justify-between items-center pb-6">
                                     <span class="text-sm font-bold text-charcoal uppercase tracking-wider">Total Amount</span>
-                                    <span class="text-3xl md:text-4xl font-serif text-forest">₹<?= e(number_format($price)) ?></span>
+                                    <span id="totalAmountDisplay" class="text-3xl md:text-4xl font-serif text-forest">₹<?= e(number_format($price)) ?></span>
                                 </div>
                             <?php endif; ?>
                             

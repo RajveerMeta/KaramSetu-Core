@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../../includes/functions.php';
 
 $ngos = [
@@ -274,47 +274,9 @@ ob_start();
         const rows = document.querySelectorAll('.ngo-row');
         const emptyState = document.getElementById('emptyState');
 
-        function applyFilters() {
-            const searchTerm = searchInput.value.toLowerCase().trim();
-            const status = filterStatus.value;
-            const location = filterLocation.value;
-            let visibleCount = 0;
-
-            rows.forEach(row => {
-                const rowName = row.getAttribute('data-name');
-                const rowStatus = row.getAttribute('data-status');
-                const rowLocation = row.getAttribute('data-location');
-                
-                const matchesSearch = rowName.includes(searchTerm);
-                const matchesStatus = status === '' || rowStatus === status;
-                const matchesLocation = location === '' || rowLocation === location;
-                
-                if (matchesSearch && matchesStatus && matchesLocation) {
-                    row.style.display = '';
-                    visibleCount++;
-                } else {
-                    row.style.display = 'none';
-                }
-            });
-
-            if (visibleCount === 0) {
-                emptyState.classList.remove('hidden');
-            } else {
-                emptyState.classList.add('hidden');
-            }
-        }
-
-        searchInput.addEventListener('input', applyFilters);
-        filterStatus.addEventListener('change', applyFilters);
-        filterLocation.addEventListener('change', applyFilters);
-        btnSearch.addEventListener('click', applyFilters);
         
-        btnClear.addEventListener('click', function() {
-            searchInput.value = '';
-            filterStatus.value = '';
-            filterLocation.value = '';
-            applyFilters();
-        });
+        
+        
     });
 </script>
 
@@ -322,3 +284,4 @@ ob_start();
 $content = ob_get_clean();
 require_once __DIR__ . '/../../includes/layouts/admin.php';
 ?>
+

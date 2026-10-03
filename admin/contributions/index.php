@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../../includes/functions.php';
 
 $contributions = [
@@ -338,58 +338,9 @@ ob_start();
         const emptyState = document.getElementById('emptyState');
         const tableHeader = document.querySelector('#contributionsTable thead');
 
-        function applyFilters() {
-            const searchTerm = searchInput.value.toLowerCase().trim();
-            const type = filterType.value;
-            const status = filterStatus.value;
-            
-            let visibleCount = 0;
-
-            rows.forEach(row => {
-                const rowContributor = row.getAttribute('data-contributor');
-                const rowContribution = row.getAttribute('data-contribution');
-                const rowNgo = row.getAttribute('data-ngo');
-                const rowType = row.getAttribute('data-type');
-                const rowStatus = row.getAttribute('data-status');
-                
-                const matchesSearch = searchTerm === '' || 
-                                      rowContributor.includes(searchTerm) || 
-                                      rowContribution.includes(searchTerm) || 
-                                      rowNgo.includes(searchTerm);
-                                      
-                const matchesType = type === '' || rowType === type;
-                const matchesStatus = status === '' || rowStatus === status;
-                
-                if (matchesSearch && matchesType && matchesStatus) {
-                    row.style.display = '';
-                    visibleCount++;
-                } else {
-                    row.style.display = 'none';
-                }
-            });
-
-            if (visibleCount === 0) {
-                emptyState.classList.remove('hidden');
-                tableHeader.style.display = 'none';
-            } else {
-                emptyState.classList.add('hidden');
-                tableHeader.style.display = '';
-            }
-        }
-
-        searchInput.addEventListener('input', applyFilters);
-        filterType.addEventListener('change', applyFilters);
-        filterStatus.addEventListener('change', applyFilters);
-        filterDate.addEventListener('change', applyFilters); // Trigger update to show interactivity
-        btnSearch.addEventListener('click', applyFilters);
         
-        btnClear.addEventListener('click', function() {
-            searchInput.value = '';
-            filterType.value = '';
-            filterStatus.value = '';
-            filterDate.value = '';
-            applyFilters();
-        });
+        
+        
     });
 </script>
 
@@ -397,3 +348,5 @@ ob_start();
 $content = ob_get_clean();
 require_once __DIR__ . '/../../includes/layouts/admin.php';
 ?>
+
+

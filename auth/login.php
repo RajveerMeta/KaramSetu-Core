@@ -17,7 +17,7 @@ ob_start();
                 <p class="text-charcoal-light">Login to continue your KarmaSetu journey.</p>
             </div>
             
-            <form id="LoginForm" class="space-y-6" action="#" method="POST" novalidate>
+            <form id="LoginForm" class="space-y-6 validation-form" action="#" method="POST" novalidate>
                 
                 
                 <div id="loginErrorMsg" class="hidden mb-4 p-4 rounded-lg bg-red-50 border border-red-200">

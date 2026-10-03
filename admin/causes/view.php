@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../../includes/functions.php';
 
 $cause = [
@@ -27,7 +27,7 @@ $contributions = [
     ['contributor' => 'Ananya Patel', 'type' => 'Money', 'amount' => '₹3,500', 'date' => '21 Sep 2026', 'status' => 'Completed'],
     ['contributor' => 'Dev Mehta', 'type' => 'Resources', 'amount' => '₹5,000', 'date' => '18 Sep 2026', 'status' => 'Completed'],
     ['contributor' => 'Priya Joshi', 'type' => 'Money', 'amount' => '₹1,500', 'date' => '16 Sep 2026', 'status' => 'Completed'],
-    ['contributor' => 'Aarav Shah', 'type' => 'Volunteer', 'amount' => '—', 'date' => '14 Sep 2026', 'status' => 'Completed'],
+    ['contributor' => 'Aarav Shah', 'type' => 'Volunteer', 'amount' => 'â€”', 'date' => '14 Sep 2026', 'status' => 'Completed'],
     ['contributor' => 'Neha Patel', 'type' => 'Money', 'amount' => '₹2,500', 'date' => '12 Sep 2026', 'status' => 'Completed']
 ];
 
@@ -230,7 +230,7 @@ ob_start();
                     <tr class="hover:bg-ivory/30 transition-colors">
                         <td class="px-6 py-4 text-sm font-medium text-charcoal"><?= e($contrib['contributor']) ?></td>
                         <td class="px-6 py-4 text-sm text-charcoal-light"><?= e($contrib['type']) ?></td>
-                        <td class="px-6 py-4 text-sm font-medium text-right <?= $contrib['amount'] === '—' ? 'text-charcoal-light' : 'text-forest' ?>">
+                        <td class="px-6 py-4 text-sm font-medium text-right <?= $contrib['amount'] === 'â€”' ? 'text-charcoal-light' : 'text-forest' ?>">
                             <?= e($contrib['amount']) ?>
                         </td>
                         <td class="px-6 py-4 text-sm text-charcoal-light"><?= e($contrib['date']) ?></td>
@@ -411,3 +411,5 @@ ob_start();
 $content = ob_get_clean();
 require_once __DIR__ . '/../../includes/layouts/admin.php';
 ?>
+
+

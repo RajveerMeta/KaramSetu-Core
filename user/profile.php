@@ -455,7 +455,7 @@ ob_start();
                         id="profileEditMode"
                         action="#"
                         method="POST"
-                        class="mt-6 hidden"
+                        class="mt-6 hidden validation-form"
                     >
 
                         <div class="space-y-5">

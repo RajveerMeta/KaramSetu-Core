@@ -6137,3 +6137,11 @@
     transform: none;
   }
 }
+
+.is-invalid {
+    border-color: #ef4444 !important;
+}
+.is-invalid:focus {
+    border-color: #ef4444 !important;
+    --tw-ring-color: #ef4444 !important;
+}

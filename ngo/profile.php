@@ -19,9 +19,13 @@ ob_start();
                 </div>
             </div>
             <div class="flex flex-wrap gap-3">
-                <button type="button" class="inline-block bg-forest text-white font-bold py-2.5 px-6 rounded-full hover:bg-forest-dark transition-colors shadow-sm">
+                <a href="<?= baseUrl('ngo/edit-profile.php') ?>" class="inline-block bg-forest text-white font-bold py-2.5 px-6 rounded-full hover:bg-forest-dark transition-colors shadow-sm text-center no-underline">
+                 Edit Profile
+                </a>
+
+                <!-- <button href="<?= baseUrl('ngo/edit-profile.php') ?>" type="button" class="inline-block bg-forest text-white font-bold py-2.5 px-6 rounded-full hover:bg-forest-dark transition-colors shadow-sm">
                     Edit Profile
-                </button>
+                </button> -->
             </div>
         </div>
 

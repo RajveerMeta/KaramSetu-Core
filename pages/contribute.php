@@ -229,7 +229,7 @@ if (!$ngo) {
                                 </div>
                             </div>
                             
-                            <form id="contributionForm">
+                            <form id="contributionForm" class="validation-form" novalidate>
                                 
                                 <!-- 08. MONEY FIELDS -->
                                 <div class="contrib-section contrib-money">
@@ -258,11 +258,11 @@ if (!$ngo) {
                                                     <span class="absolute left-4 top-1/2 -translate-y-1/2 text-charcoal-light font-medium">₹</span>
                                                     <input 
                                                         type="number" 
-                                                        id="contribAmount"
+                                                        id="contribAmount" name="contribution_amount"
                                                         min="1" 
                                                         placeholder="Enter amount" 
                                                         class="w-full pl-8 pr-4 py-3.5 bg-ivory border border-gold/30 rounded-xl focus:ring-2 focus:ring-forest focus:border-transparent outline-none text-forest font-medium transition-all"
-                                                     data-validate="numeric">
+                                                     data-validate="required numeric">
                                                 </div>
                                             </div>
                                         </div>
@@ -274,7 +274,7 @@ if (!$ngo) {
                                     <div class="space-y-5 mb-8">
                                         <div>
                                             <label class="block text-xs font-bold text-charcoal uppercase tracking-wider mb-2">Food Type</label>
-                                            <select class="w-full px-4 py-3.5 bg-ivory border border-gold/30 rounded-xl focus:ring-2 focus:ring-forest focus:border-transparent outline-none text-charcoal transition-all appearance-none cursor-pointer">
+                                            <select name="food_type" class="w-full px-4 py-3.5 bg-ivory border border-gold/30 rounded-xl focus:ring-2 focus:ring-forest focus:border-transparent outline-none text-charcoal transition-all appearance-none cursor-pointer">
                                                 <option>Rice / Grains</option>
                                                 <option>Packaged Food</option>
                                                 <option>Cooked Meals</option>
@@ -284,11 +284,11 @@ if (!$ngo) {
                                         <div class="grid grid-cols-2 gap-3">
                                             <div>
                                                 <label class="block text-xs font-bold text-charcoal uppercase tracking-wider mb-2">Quantity</label>
-                                                <input id="contribFoodQuantity" type="number" min="1" class="w-full px-4 py-3.5 bg-ivory border border-gold/30 rounded-xl focus:ring-2 focus:ring-forest focus:border-transparent outline-none text-charcoal transition-all" placeholder="10" data-validate="numeric">
+                                                <input id="contribFoodQuantity"data-validate="required numeric" type="number" min="1" class="w-full px-4 py-3.5 bg-ivory border border-gold/30 rounded-xl focus:ring-2 focus:ring-forest focus:border-transparent outline-none text-charcoal transition-all" placeholder="10">
                                               </div>
                                             <div>
                                                 <label class="block text-xs font-bold text-charcoal uppercase tracking-wider mb-2">Unit</label>
-                                                <select id="contribFoodUnit" class="w-full px-4 py-3.5 bg-ivory border border-gold/30 rounded-xl focus:ring-2 focus:ring-forest focus:border-transparent outline-none text-charcoal transition-all appearance-none cursor-pointer">
+                                                <select id="contribFoodUnit" name="food_unit" class="w-full px-4 py-3.5 bg-ivory border border-gold/30 rounded-xl focus:ring-2 focus:ring-forest focus:border-transparent outline-none text-charcoal transition-all appearance-none cursor-pointer">
                                                     <option>kg</option>
                                                     <option>packets</option>
                                                     <option>meals</option>
@@ -298,7 +298,7 @@ if (!$ngo) {
                                         </div>
                                         <div>
                                             <label class="block text-xs font-bold text-charcoal uppercase tracking-wider mb-2">Delivery</label>
-                                            <select class="w-full px-4 py-3.5 bg-ivory border border-gold/30 rounded-xl focus:ring-2 focus:ring-forest focus:border-transparent outline-none text-charcoal transition-all appearance-none cursor-pointer">
+                                            <select name="food_delivery" class="w-full px-4 py-3.5 bg-ivory border border-gold/30 rounded-xl focus:ring-2 focus:ring-forest focus:border-transparent outline-none text-charcoal transition-all appearance-none cursor-pointer">
                                                 <option>I will drop off at NGO center</option>
                                                 <option>Request pickup</option>
                                             </select>
@@ -311,7 +311,7 @@ if (!$ngo) {
                                     <div class="space-y-5 mb-8">
                                         <div>
                                             <label class="block text-xs font-bold text-charcoal uppercase tracking-wider mb-2">Clothing Type</label>
-                                            <select class="w-full px-4 py-3.5 bg-ivory border border-gold/30 rounded-xl focus:ring-2 focus:ring-forest focus:border-transparent outline-none text-charcoal transition-all appearance-none cursor-pointer">
+                                            <select name="clothing_type" class="w-full px-4 py-3.5 bg-ivory border border-gold/30 rounded-xl focus:ring-2 focus:ring-forest focus:border-transparent outline-none text-charcoal transition-all appearance-none cursor-pointer">
                                                 <option>Children's Clothes</option>
                                                 <option>Women's Clothes</option>
                                                 <option>Men's Clothes</option>
@@ -322,11 +322,11 @@ if (!$ngo) {
                                         <div class="grid grid-cols-2 gap-3">
                                             <div>
                                                 <label class="block text-xs font-bold text-charcoal uppercase tracking-wider mb-2">Quantity</label>
-                                                <input id="contribClothesQuantity" type="number" min="1" class="w-full px-4 py-3.5 bg-ivory border border-gold/30 rounded-xl focus:ring-2 focus:ring-forest focus:border-transparent outline-none text-charcoal transition-all" placeholder="5" data-validate="numeric">
+                                                <input id="contribClothesQuantity" name="clothes_quantity" type="number" min="1" class="w-full px-4 py-3.5 bg-ivory border border-gold/30 rounded-xl focus:ring-2 focus:ring-forest focus:border-transparent outline-none text-charcoal transition-all" placeholder="5"  data-validate="required numeric">
                                             </div>
                                             <div>
                                                 <label class="block text-xs font-bold text-charcoal uppercase tracking-wider mb-2">Condition</label>
-                                                <select class="w-full px-4 py-3.5 bg-ivory border border-gold/30 rounded-xl focus:ring-2 focus:ring-forest focus:border-transparent outline-none text-charcoal transition-all appearance-none cursor-pointer">
+                                                <select name="clothing_condition" class="w-full px-4 py-3.5 bg-ivory border border-gold/30 rounded-xl focus:ring-2 focus:ring-forest focus:border-transparent outline-none text-charcoal transition-all appearance-none cursor-pointer">
                                                     <option>New</option>
                                                     <option>Good Condition</option>
                                                 </select>
@@ -334,7 +334,7 @@ if (!$ngo) {
                                         </div>
                                         <div>
                                             <label class="block text-xs font-bold text-charcoal uppercase tracking-wider mb-2">For</label>
-                                            <select class="w-full px-4 py-3.5 bg-ivory border border-gold/30 rounded-xl focus:ring-2 focus:ring-forest focus:border-transparent outline-none text-charcoal transition-all appearance-none cursor-pointer">
+                                            <select name="clothing_for" class="w-full px-4 py-3.5 bg-ivory border border-gold/30 rounded-xl focus:ring-2 focus:ring-forest focus:border-transparent outline-none text-charcoal transition-all appearance-none cursor-pointer">
                                                 <option>Children</option>
                                                 <option>Adults</option>
                                                 <option>Elderly</option>
@@ -349,16 +349,16 @@ if (!$ngo) {
                                     <div class="space-y-5 mb-8">
                                         <div>
                                             <label class="block text-xs font-bold text-charcoal uppercase tracking-wider mb-2">Item Name</label>
-                                            <input id="contribItemName" type="text" class="w-full px-4 py-3.5 bg-ivory border border-gold/30 rounded-xl focus:ring-2 focus:ring-forest focus:border-transparent outline-none text-charcoal transition-all" placeholder="e.g. School Books, Furniture">
+                                            <input data-validate="required alpha" id="contribItemName" name="item_name" type="text" class="w-full px-4 py-3.5 bg-ivory border border-gold/30 rounded-xl focus:ring-2 focus:ring-forest focus:border-transparent outline-none text-charcoal transition-all" placeholder="e.g. School Books, Furniture">
                                         </div>
                                         <div class="grid grid-cols-2 gap-3">
                                             <div>
                                                 <label class="block text-xs font-bold text-charcoal uppercase tracking-wider mb-2">Quantity</label>
-                                                <input id="contribItemQuantity" type="number" min="1" class="w-full px-4 py-3.5 bg-ivory border border-gold/30 rounded-xl focus:ring-2 focus:ring-forest focus:border-transparent outline-none text-charcoal transition-all" placeholder="1" data-validate="numeric">
+                                                <input id="contribItemQuantity" name="item_quantity" type="number" min="1" class="w-full px-4 py-3.5 bg-ivory border border-gold/30 rounded-xl focus:ring-2 focus:ring-forest focus:border-transparent outline-none text-charcoal transition-all" placeholder="1" data-validate="required  numeric">
                                             </div>
                                             <div>
                                                 <label class="block text-xs font-bold text-charcoal uppercase tracking-wider mb-2">Condition</label>
-                                                <select class="w-full px-4 py-3.5 bg-ivory border border-gold/30 rounded-xl focus:ring-2 focus:ring-forest focus:border-transparent outline-none text-charcoal transition-all appearance-none cursor-pointer">
+                                                <select name="item_condition" class="w-full px-4 py-3.5 bg-ivory border border-gold/30 rounded-xl focus:ring-2 focus:ring-forest focus:border-transparent outline-none text-charcoal transition-all appearance-none cursor-pointer">
                                                     <option>New</option>
                                                     <option>Good Condition</option>
                                                 </select>
@@ -366,7 +366,7 @@ if (!$ngo) {
                                         </div>
                                         <div>
                                             <label class="block text-xs font-bold text-charcoal uppercase tracking-wider mb-2">Description</label>
-                                            <textarea rows="2" class="w-full px-4 py-3 bg-ivory border border-gold/30 rounded-xl focus:ring-2 focus:ring-forest focus:border-transparent outline-none text-charcoal transition-all resize-none" placeholder="Describe the item..."></textarea>
+                                            <textarea data-validate="required alpha" name="item_description" rows="2" class="w-full px-4 py-3 bg-ivory border border-gold/30 rounded-xl focus:ring-2 focus:ring-forest focus:border-transparent outline-none text-charcoal transition-all resize-none" placeholder="Describe the item..."></textarea>
                                         </div>
                                     </div>
                                 </div>
@@ -378,23 +378,23 @@ if (!$ngo) {
                                     <div class="space-y-5">
                                         <div>
                                             <label class="block text-xs font-bold text-charcoal uppercase tracking-wider mb-2">Full Name</label>
-                                            <input type="text" required class="w-full px-4 py-3.5 bg-ivory border border-gold/30 rounded-xl focus:ring-2 focus:ring-forest focus:border-transparent outline-none text-charcoal transition-all" placeholder="Enter your name" data-validate="required alpha">
+                                            <input name="full_name" type="text" required class="w-full px-4 py-3.5 bg-ivory border border-gold/30 rounded-xl focus:ring-2 focus:ring-forest focus:border-transparent outline-none text-charcoal transition-all" placeholder="Enter your name" data-validate="required alpha">
                                         </div>
                                         
                                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                                             <div>
                                                 <label class="block text-xs font-bold text-charcoal uppercase tracking-wider mb-2">Email Address</label>
-                                                <input type="email" required class="w-full px-4 py-3.5 bg-ivory border border-gold/30 rounded-xl focus:ring-2 focus:ring-forest focus:border-transparent outline-none text-charcoal transition-all" placeholder="Enter your email" data-validate="required email">
+                                                <input name="email" type="email" required class="w-full px-4 py-3.5 bg-ivory border border-gold/30 rounded-xl focus:ring-2 focus:ring-forest focus:border-transparent outline-none text-charcoal transition-all" placeholder="Enter your email" data-validate="required email">
                                             </div>
                                             <div>
                                                 <label class="block text-xs font-bold text-charcoal uppercase tracking-wider mb-2">Phone Number</label>
-                                                <input type="tel" class="w-full px-4 py-3.5 bg-ivory border border-gold/30 rounded-xl focus:ring-2 focus:ring-forest focus:border-transparent outline-none text-charcoal transition-all" placeholder="Enter your phone number" data-validate="numeric">
+                                                <input name="phone" type="tel" class="w-full px-4 py-3.5 bg-ivory border border-gold/30 rounded-xl focus:ring-2 focus:ring-forest focus:border-transparent outline-none text-charcoal transition-all" placeholder="Enter your phone number" data-validate="required numeric">
                                             </div>
                                         </div>
                                         
                                         <label class="flex flex-col md:flex-row items-center gap-3 cursor-pointer group pt-2">
                                             <div class="relative flex flex-col md:flex-row items-center justify-center">
-                                                <input type="checkbox" class="peer sr-only">
+                                                <input name="anonymous" type="checkbox" class="peer sr-only">
                                                 <div class="w-5 h-5 border-2 border-gold/50 rounded bg-white peer-checked:bg-forest peer-checked:border-forest transition-colors"></div>
                                                 <svg class="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
                                             </div>
@@ -403,7 +403,7 @@ if (!$ngo) {
                                         
                                         <div class="pt-2">
                                             <label class="block text-xs font-bold text-charcoal uppercase tracking-wider mb-2">Message to the NGO (Optional)</label>
-                                            <textarea rows="3" class="w-full px-4 py-3 bg-ivory border border-gold/30 rounded-xl focus:ring-2 focus:ring-forest focus:border-transparent outline-none text-charcoal transition-all resize-none" placeholder="Write a short message..."></textarea>
+                                            <textarea name="message" rows="3" class="w-full px-4 py-3 bg-ivory border border-gold/30 rounded-xl focus:ring-2 focus:ring-forest focus:border-transparent outline-none text-charcoal transition-all resize-none" placeholder="Write a short message..."></textarea>
                                         </div>
                                     </div>
                                 </div>

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../../includes/functions.php';
 
 $users = [
@@ -341,45 +341,9 @@ ob_start();
         const rows = document.querySelectorAll('.user-row');
         const emptyState = document.getElementById('emptyState');
 
-        function applyFilters() {
-            const searchTerm = searchInput.value.toLowerCase().trim();
-            const status = filterStatus.value;
-            let visibleCount = 0;
-
-            rows.forEach(row => {
-                const rowName = row.getAttribute('data-name');
-                const rowEmail = row.getAttribute('data-email');
-                const rowStatus = row.getAttribute('data-status');
-                
-                const matchesSearch = searchTerm === '' || rowName.includes(searchTerm) || rowEmail.includes(searchTerm);
-                const matchesStatus = status === '' || rowStatus === status;
-                
-                if (matchesSearch && matchesStatus) {
-                    row.style.display = '';
-                    visibleCount++;
-                } else {
-                    row.style.display = 'none';
-                }
-            });
-
-            if (visibleCount === 0) {
-                emptyState.classList.remove('hidden');
-            } else {
-                emptyState.classList.add('hidden');
-            }
-        }
-
-        searchInput.addEventListener('input', applyFilters);
-        filterStatus.addEventListener('change', applyFilters);
-        filterRegistration.addEventListener('change', applyFilters); // Doesn't filter visually in dummy data since we only have 8, but triggers event
-        btnSearch.addEventListener('click', applyFilters);
         
-        btnClear.addEventListener('click', function() {
-            searchInput.value = '';
-            filterStatus.value = '';
-            filterRegistration.value = '';
-            applyFilters();
-        });
+        
+        
 
         const statusModal = document.getElementById('statusModal');
         const btnConfirmStatus = document.getElementById('btnConfirmStatus');
@@ -459,7 +423,7 @@ ob_start();
                     showAlert('User account activated successfully.', 'success');
                 }
                 
-                applyFilters();
+                
             }
         });
 
@@ -492,3 +456,4 @@ ob_start();
 $content = ob_get_clean();
 require_once __DIR__ . '/../../includes/layouts/admin.php';
 ?>
+

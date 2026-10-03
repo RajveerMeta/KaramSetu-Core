@@ -172,7 +172,7 @@ ob_start();
                                     <?= htmlspecialchars($event['date']) ?>
                                 </div>
                             </div>
-                            <a href="<?= baseUrl('pages/event-details.php') ?>" class="text-sm font-bold text-gold hover:text-forest transition-colors mt-2 block">View Details &rarr;</a>
+                            <a href="<?= baseUrl('ngo/events/details.php') ?>" class="text-sm font-bold text-gold hover:text-forest transition-colors mt-2 block">View Details &rarr;</a>
                         </div>
                         <?php endforeach; ?>
                     </div>
@@ -243,28 +243,28 @@ ob_start();
                     
                     <div class="space-y-3">
                         <a href="<?= baseUrl('ngo/profile.php') ?>" class="flex items-center p-3 rounded-xl hover:bg-ivory transition-colors group">
-                            <div class="w-8 h-8 rounded-lg bg-forest/10 text-forest flex items-center justify-center mr-3 group-hover:bg-forest group-hover:text-white transition-colors">
+                            <div class="w-8 h-8 rounded-lg bg-forest/10 text-forest flex items-center justify-center mr-3 group-hover:bg-forest group-hover:text-gold transition-colors">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
                             </div>
                             <span class="text-sm font-bold text-charcoal">Manage Profile</span>
                         </a>
                         
                         <a href="<?= baseUrl('ngo/create-cause.php') ?>" class="flex items-center p-3 rounded-xl hover:bg-ivory transition-colors group">
-                            <div class="w-8 h-8 rounded-lg bg-forest/10 text-forest flex items-center justify-center mr-3 group-hover:bg-forest group-hover:text-white transition-colors">
+                            <div class="w-8 h-8 rounded-lg bg-forest/10 text-forest flex items-center justify-center mr-3 group-hover:bg-forest group-hover:text-gold transition-colors">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                             </div>
                             <span class="text-sm font-bold text-charcoal">Create Cause</span>
                         </a>
 
                         <a href="<?= baseUrl('ngo/events/create.php') ?>" class="flex items-center p-3 rounded-xl hover:bg-ivory transition-colors group">
-                            <div class="w-8 h-8 rounded-lg bg-forest/10 text-forest flex items-center justify-center mr-3 group-hover:bg-forest group-hover:text-white transition-colors">
+                            <div class="w-8 h-8 rounded-lg bg-forest/10 text-forest flex items-center justify-center mr-3 group-hover:bg-forest group-hover:text-gold transition-colors">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                             </div>
                             <span class="text-sm font-bold text-charcoal">Create Event</span>
                         </a>
 
                         <a href="<?= baseUrl('ngo/donations.php') ?>" class="flex items-center p-3 rounded-xl hover:bg-ivory transition-colors group">
-                            <div class="w-8 h-8 rounded-lg bg-forest/10 text-forest flex items-center justify-center mr-3 group-hover:bg-forest group-hover:text-white transition-colors">
+                            <div class="w-8 h-8 rounded-lg bg-forest/10 text-forest flex items-center justify-center mr-3 group-hover:bg-forest group-hover:text-gold transition-colors">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                             </div>
                             <span class="text-sm font-bold text-charcoal">View Contributions</span>

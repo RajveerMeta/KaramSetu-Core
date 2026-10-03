@@ -15,7 +15,7 @@ ob_start();
             <h1 class="text-xl md:text-3xl font-serif font-bold text-forest mb-2">Create New Event</h1>
             <p class="text-charcoal-light mb-8">Plan and publish a new event for your organization.</p>
             
-            <form id="eventForm" class="space-y-6">
+            <form id="eventForm" class="space-y-6 validation-form" novalidate>
                 <!-- Success Message -->
                 <div id="successMsg" class="hidden p-4 rounded-xl bg-forest/10 border border-forest text-forest font-bold text-sm mb-6">
                     Event created successfully.
@@ -83,21 +83,7 @@ ob_start();
     </div>
 </div>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('eventForm');
-    if (form) {
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            document.getElementById('successMsg').classList.remove('hidden');
-            window.scrollTo({top: 0, behavior: 'smooth'});
-            form.reset();
-            setTimeout(() => {
-                document.getElementById('successMsg').classList.add('hidden');
-            }, 5000);
-        });
-    }
-});
-</script>
+
 <?php
 $content = ob_get_clean();
 require_once __DIR__ . '/../../includes/layouts/main.php';

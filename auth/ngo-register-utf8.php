@@ -39,7 +39,7 @@
 
         <!-- Application Form -->
         <div id="ngoApplicationFormContainer" class="bg-white rounded-3xl shadow-sm border border-gold/20 overflow-hidden">
-            <form id="ngoApplicationForm" action="#" method="POST" class="p-6 md:p-10 space-y-12">
+            <form id="ngoApplicationForm" action="#" method="POST" class="p-6 md:p-10 space-y-12 validation-form">
             
                 
                 <!-- Section 01: Organization Details -->
