@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require_once __DIR__ . '/../includes/functions.php';
 ob_start();
 ?>
@@ -26,7 +26,7 @@ ob_start();
                     <svg class="w-6 h-6 text-forest" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 </div>
                 <h3 class="text-sm font-bold text-charcoal-light uppercase tracking-wider mb-1">Money Received</h3>
-                <p class="text-xl md:text-3xl font-serif font-bold text-forest">₹3,75,000</p>
+                <p class="text-xl md:text-3xl font-serif font-bold text-forest">?3,75,000</p>
             </div>
             
             <div class="bg-white rounded-3xl p-4 md:p-6 shadow-sm border border-gold/20 flex flex-col justify-center items-center text-center">
@@ -96,7 +96,7 @@ ob_start();
                                     <span class="inline-block px-3 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-full">Money</span>
                                 </td>
                                 <td class="py-4 text-sm text-charcoal">16 Sep 2026</td>
-                                <td class="py-4 font-bold text-forest">₹2,000</td>
+                                <td class="py-4 font-bold text-forest">?2,000</td>
                                 <td class="py-4">
                                     <span class="inline-block px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full">Received</span>
                                 </td>
@@ -160,7 +160,7 @@ ob_start();
 
 <?php
 $content = ob_get_clean();
-require_once __DIR__ . '/../includes/layouts/main.php';
+require_once __DIR__ . '/../includes/layouts/ngo.php';
 ?>
 
 

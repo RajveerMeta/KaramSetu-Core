@@ -16,16 +16,11 @@
         }
     </script>
     <link rel="stylesheet" href="<?= asset('css/app.css') ?>">
-    <script src="<?= asset('js/jquery.min.js') ?>"></script>
-    <script src="<?= asset('js/validation.js') ?>" defer></script>
     <script src="<?= asset('js/auth.js') ?>" defer></script>
-    <script src="<?= asset('js/navigation.js') ?>" defer></script>
-    <script src="<?= asset('js/causes.js') ?>" defer></script>
-    <script src="<?= asset('js/ngo.js') ?>" defer></script>
-    <script src="<?= asset('js/events.js') ?>" defer></script>
-    <script src="<?= asset('js/user-events.js') ?>" defer></script>
-    <script src="<?= asset('js/contributions.js') ?>" defer></script>
-    <script src="<?= asset('js/route-protection.js') ?>" defer></script>
+        <script src="<?= asset('js/causes.js') ?>" defer></script>
+        <script src="<?= asset('js/events.js') ?>" defer></script>
+        <script src="<?= asset('js/user-events.js') ?>" defer></script>
+        <script src="<?= asset('js/contributions.js') ?>" defer></script>
 
     <style>
         /* Bridge visual styles */

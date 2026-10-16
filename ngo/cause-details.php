@@ -135,5 +135,5 @@ ob_start();
 </div>
 <?php
 $content = ob_get_clean();
-require_once __DIR__ . '/../includes/layouts/main.php';
+require_once __DIR__ . '/../includes/layouts/ngo.php';
 ?>

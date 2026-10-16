@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require_once __DIR__ . '/../includes/functions.php';
 
 // Mock data
@@ -312,5 +312,5 @@ ob_start();
 
 <?php
 $content = ob_get_clean();
-require_once __DIR__ . '/../includes/layouts/main.php';
+require_once __DIR__ . '/../includes/layouts/ngo.php';
 ?>

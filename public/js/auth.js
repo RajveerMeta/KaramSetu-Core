@@ -1,15 +1,17 @@
 $(document).ready(function () {
   /* Authentication and user/NGO/admin navigation */
+  
+  /* Authentication and user/NGO/admin navigation */
   const storedUserData = localStorage.getItem("karmaSetuDemoUser");
 
   if (storedUserData !== null) {
     try {
       const demoUserData = JSON.parse(storedUserData);
 
-      $(".user-name").text(demoUserData.name);
-      $(".user-email").text(demoUserData.email);
+      $(".user-name").text(demoUserData.name || "");
+      $(".user-email").text(demoUserData.email || "");
 
-      const userInitials = demoUserData.name
+      const userInitials = (demoUserData.name || "User")
         .split(" ")
         .map((namePart) => namePart[0])
         .join("")
@@ -18,39 +20,21 @@ $(document).ready(function () {
 
       $(".user-initial").text(userInitials);
 
+      // Hide guest buttons and show the logged-in dropdown
       $(".auth-guest").hide();
+      $(".auth-user").css("display", "block");
 
-      if (demoUserData.role === "ngo") {
-        $(".auth-user").hide();
-        $(".auth-ngo").removeClass("hidden").css("display", "flex");
-
-        $(".desktop-nav-default").hide();
-        $(".desktop-nav-ngo").removeClass("hidden").css("display", "flex");
-      } else if (demoUserData.role === "admin") {
-        $(".auth-user").hide();
-        $(".auth-ngo").hide();
-
-        $(".desktop-nav-default").hide();
-        $(".desktop-nav-ngo").hide();
-      } else {
-        $(".auth-ngo").hide();
-        $(".auth-user").removeClass("hidden").css("display", "flex");
-
-        $(".desktop-nav-ngo").hide();
-        $(".desktop-nav-default").removeClass("hidden").css("display", "flex");
-      }
     } catch (error) {
       console.log("Invalid demo user data.");
+      $(".auth-user").hide();
+      $(".auth-guest").css("display", "flex");
     }
   } else {
-    $(".auth-guest").removeClass("hidden").css("display", "flex");
-
+    // Show guest buttons and hide the logged-in dropdown
     $(".auth-user").hide();
-    $(".auth-ngo").hide();
-
-    $(".desktop-nav-ngo").hide();
-    $(".desktop-nav-default").removeClass("hidden").css("display", "flex");
+    $(".auth-guest").css("display", "flex");
   }
+
 
   /* Logout */
   $(".logout-btn").on("click", function () {

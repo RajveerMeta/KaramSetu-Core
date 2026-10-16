@@ -72,6 +72,27 @@ ob_start();
                         <label class="block text-sm font-bold text-charcoal mb-1">Detailed Description</label>
                         <textarea id="long_desc" rows="5" class="w-full px-4 py-3 border border-charcoal/20 rounded-xl text-charcoal placeholder-charcoal/40 focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent transition-all bg-ivory/30 focus:bg-white" placeholder="Provide full details about what attendees can expect..."></textarea>
                     </div>
+                    
+                    <div>
+                        <label class="block text-sm font-bold text-charcoal mb-1">
+                            Entry Fee (₹)
+                        </label>
+                        <input
+                            type="number"
+                            id="entry_fee"
+                            name="entry_fee"
+                            min="0"
+                            step="0.01"
+                            value=""
+                            class="w-full px-4 py-3 border border-charcoal/20 rounded-xl text-charcoal placeholder-charcoal/40 focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent transition-all bg-ivory/30 focus:bg-white"
+                            placeholder="Enter 0 for a free event"
+                            data-validate="numeric"
+                        >
+                        <p class="text-xs text-charcoal-light mt-1">
+                            Enter 0 if the event is free.
+                        </p>
+                    </div>
+
                 </div>
                 
                 <div class="flex flex-col md:flex-row flex-wrap gap-4 pt-4 border-t border-charcoal/10 mt-8">
@@ -86,5 +107,5 @@ ob_start();
 
 <?php
 $content = ob_get_clean();
-require_once __DIR__ . '/../../includes/layouts/main.php';
+require_once __DIR__ . '/../../includes/layouts/ngo.php';
 ?>

@@ -137,6 +137,16 @@ ob_start();
                             <label for="phone" class="block text-sm font-bold text-charcoal mb-2">Official Phone Number *</label>
                             <input type="tel" id="phone" name="phone" required class="w-full px-4 py-3 border border-charcoal/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-gold focus:border-gold transition-all bg-ivory/30 focus:bg-white text-charcoal" placeholder="10-digit number" data-validate="required numeric">
                         </div>
+                          <div>
+                            <label for="ngo_password" class="block text-sm font-bold text-charcoal mb-2">Password *</label>
+                            <input type="password" id="ngo_password" name="password" required minlength="8" maxlength="25" autocomplete="new-password" class="w-full px-4 py-3 border border-charcoal/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-gold focus:border-gold transition-all bg-ivory/30 focus:bg-white text-charcoal" placeholder="Create a strong password" data-validate="required strongPassword">
+                            <p class="mt-2 text-xs text-charcoal/60">8–25 characters, including uppercase, lowercase, number, and special character.</p>
+                        </div>
+
+                        <div>
+                            <label for="ngo_confirm_password" class="block text-sm font-bold text-charcoal mb-2">Confirm Password *</label>
+                            <input type="password" id="ngo_confirm_password" name="confirm_password" required minlength="8" maxlength="25" autocomplete="new-password" data-password-id="ngo_password" class="w-full px-4 py-3 border border-charcoal/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-gold focus:border-gold transition-all bg-ivory/30 focus:bg-white text-charcoal" placeholder="Re-enter your password" data-validate="required confirmPassword">
+                        </div>
                         
                         <div class="md:col-span-2">
                             <label for="website" class="block text-sm font-bold text-charcoal mb-2">Website</label>

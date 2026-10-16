@@ -17,14 +17,6 @@
                     <a href="<?= baseUrl('?page=ngos') ?>" class="text-charcoal hover:text-forest transition-colors text-sm font-medium tracking-wide whitespace-nowrap">NGOs</a>
                     <a href="<?= baseUrl('?page=about') ?>" class="text-charcoal hover:text-forest transition-colors text-sm font-medium tracking-wide whitespace-nowrap">About</a>
                 </div>
-                
-                <div class="flex items-center justify-center space-x-4 lg:space-x-8 px-4 desktop-nav-ngo" style="display:none;">
-                    <a href="<?= baseUrl('ngo/dashboard.php') ?>" class="text-charcoal hover:text-forest transition-colors text-sm font-medium tracking-wide whitespace-nowrap">Dashboard</a>
-                    <a href="<?= baseUrl('ngo/causes.php') ?>" class="text-charcoal hover:text-forest transition-colors text-sm font-medium tracking-wide whitespace-nowrap">Causes</a>
-                    <a href="<?= baseUrl('ngo/events/index.php') ?>" class="text-charcoal hover:text-forest transition-colors text-sm font-medium tracking-wide whitespace-nowrap">Events</a>
-                    <a href="<?= baseUrl('ngo/donations.php') ?>" class="text-charcoal hover:text-forest transition-colors text-sm font-medium tracking-wide whitespace-nowrap">Contributions</a>
-                    <a href="<?= baseUrl('ngo/profile.php') ?>" class="text-charcoal hover:text-forest transition-colors text-sm font-medium tracking-wide whitespace-nowrap">Profile</a>
-                </div>
             </div>
 
             <!-- Right Actions -->
@@ -54,21 +46,6 @@
                     </div>
                 </div>
 
-                <div class="auth-ngo relative min-w-0" style="display:none;">
-                    <button id="ngoDropdownBtn" class="flex items-center space-x-2 text-charcoal hover:text-forest text-sm font-medium transition-colors focus:outline-none min-w-0 text-left max-w-[140px] sm:max-w-none">
-                        <span class="flex-shrink-0 flex items-center justify-center h-8 w-8 rounded-full bg-forest text-white text-xs font-serif font-bold shadow-sm user-initial"></span>
-                        <span class="user-name truncate min-w-0"></span>
-                        <svg class="flex-shrink-0 w-4 h-4 transition-transform duration-200" id="ngoDropdownIcon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                    </button>
-                    
-                    <!-- Dropdown menu -->
-                    <div id="ngoDropdownMenu" style="display:none;" class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-charcoal/10 overflow-hidden z-50 py-2">
-                        <a href="<?= baseUrl('ngo/dashboard.php') ?>" class="block px-4 py-2 text-sm text-charcoal hover:bg-ivory-dark hover:text-forest transition-colors">NGO Dashboard</a>
-                        <a href="<?= baseUrl('ngo/profile.php') ?>" class="block px-4 py-2 text-sm text-charcoal hover:bg-ivory-dark hover:text-forest transition-colors">Manage Profile</a>
-                        <div class="border-t border-charcoal/5 my-1"></div>
-                        <button class="logout-btn block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors font-medium">Logout</button>
-                    </div>
-                </div>
 
                 <!-- Mobile menu button -->
                 <div class="md:hidden flex items-center ml-1 sm:ml-2 flex-shrink-0">
@@ -91,13 +68,6 @@
             <a href="<?= baseUrl('?page=events') ?>" class="mobile-link block px-3 py-2 rounded-md text-base font-medium text-charcoal hover:text-forest hover:bg-ivory-dark">Events</a>
             <a href="<?= baseUrl('?page=ngos') ?>" class="mobile-link block px-3 py-2 rounded-md text-base font-medium text-charcoal hover:text-forest hover:bg-ivory-dark">NGOs</a>
             <a href="<?= baseUrl('?page=about') ?>" class="mobile-link block px-3 py-2 rounded-md text-base font-medium text-charcoal hover:text-forest hover:bg-ivory-dark">About</a>
-        </div>
-        <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3 mobile-nav-ngo" style="display:none;">
-            <a href="<?= baseUrl('ngo/dashboard.php') ?>" class="mobile-link block px-3 py-2 rounded-md text-base font-medium text-charcoal hover:text-forest hover:bg-ivory-dark">Dashboard</a>
-            <a href="<?= baseUrl('ngo/causes.php') ?>" class="mobile-link block px-3 py-2 rounded-md text-base font-medium text-charcoal hover:text-forest hover:bg-ivory-dark">Causes</a>
-            <a href="<?= baseUrl('ngo/events/index.php') ?>" class="mobile-link block px-3 py-2 rounded-md text-base font-medium text-charcoal hover:text-forest hover:bg-ivory-dark">Events</a>
-            <a href="<?= baseUrl('ngo/donations.php') ?>" class="mobile-link block px-3 py-2 rounded-md text-base font-medium text-charcoal hover:text-forest hover:bg-ivory-dark">Contributions</a>
-            <a href="<?= baseUrl('ngo/profile.php') ?>" class="mobile-link block px-3 py-2 rounded-md text-base font-medium text-charcoal hover:text-forest hover:bg-ivory-dark">Profile</a>
         </div>
     </div>
 </nav>
@@ -127,22 +97,6 @@
                     mobileMenuIconPath.setAttribute('d', iconMenu);
                 });
             });
-        }
-        
-        // Handle which mobile nav to show using the exact same role mechanism as the rest of the application
-        const storedUserData = localStorage.getItem('karmaSetuDemoUser');
-        if (storedUserData) {
-            try {
-                const demoUserData = JSON.parse(storedUserData);
-                if (demoUserData.role === 'ngo') {
-                    const navDefault = document.querySelector('.mobile-nav-default');
-                    const navNgo = document.querySelector('.mobile-nav-ngo');
-                    if (navDefault) navDefault.style.display = 'none';
-                    if (navNgo) navNgo.style.display = 'block';
-                }
-            } catch (e) {
-                // Ignore parse errors
-            }
         }
     });
 </script>

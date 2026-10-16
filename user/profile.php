@@ -36,7 +36,7 @@ ob_start();
 <div class="min-h-screen bg-ivory/40 py-10 lg:py-14">
 
     <!--MAIN CONTAINER -->
-    <div class="w-full max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
         <!--PAGE HEADER-->
         <div class="mb-8 lg:mb-10">
@@ -125,7 +125,7 @@ ob_start();
                                 </span>
 
                                 <span
-                                    class="mt-1 text-[10px] font-bold
+                                    class="mt-1 text-xs font-bold
                                            uppercase tracking-wider
                                            text-charcoal-light"
                                 >
@@ -146,7 +146,7 @@ ob_start();
                                 </span>
 
                                 <span
-                                    class="mt-1 text-[10px] font-bold
+                                    class="mt-1 text-xs font-bold
                                            uppercase tracking-wider
                                            text-charcoal-light"
                                 >
@@ -477,7 +477,8 @@ ob_start();
                                     id="full_name"
                                     name="name"
                                     type="text"
-                                    value="<?= e($user- data-validate="alpha">name) ?>"
+                                    value="<?= e($user->name) ?>"
+                                    data-validate="alpha"
                                     readonly
                                     class="w-full rounded-lg border
                                            border-charcoal/20
@@ -505,7 +506,8 @@ ob_start();
                                     id="email"
                                     name="email"
                                     type="email"
-                                    value="<?= e($user- data-validate="email">email) ?>"
+                                    value="<?= e($user->email) ?>"
+                                    data-validate="email"
                                     readonly
                                     class="w-full rounded-lg border
                                            border-charcoal/20
@@ -595,7 +597,8 @@ ob_start();
                                     id="city"
                                     name="city"
                                     type="text"
-                                    value="<?= e($user- data-validate="alpha">city) ?>"
+                                    value="<?= e($user->city) ?>"
+                                    data-validate="alpha"
                                     class="w-full rounded-lg border
                                            border-charcoal/20
                                            bg-white px-4 py-3
@@ -626,7 +629,8 @@ ob_start();
                                     id="state"
                                     name="state"
                                     type="text"
-                                    value="<?= e($user- data-validate="alpha">state) ?>"
+                                    value="<?= e($user->state) ?>"
+                                    data-validate="alpha"
                                     class="w-full rounded-lg border
                                            border-charcoal/20
                                            bg-white px-4 py-3

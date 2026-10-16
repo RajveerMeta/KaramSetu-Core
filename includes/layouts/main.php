@@ -17,13 +17,10 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="<?= asset('js/validation.js') ?>" defer></script>
         <script src="<?= asset('js/auth.js') ?>" defer></script>
-        <script src="<?= asset('js/navigation.js') ?>" defer></script>
         <script src="<?= asset('js/causes.js') ?>" defer></script>
-        <script src="<?= asset('js/ngo.js') ?>" defer></script>
         <script src="<?= asset('js/events.js') ?>" defer></script>
         <script src="<?= asset('js/user-events.js') ?>" defer></script>
         <script src="<?= asset('js/contributions.js') ?>" defer></script>
-        <script src="<?= asset('js/route-protection.js') ?>" defer></script>
     
     <style>
         
