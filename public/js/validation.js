@@ -423,10 +423,10 @@ $(document).ready(function () {
   ========================= */
 
   $("form.validation-form").on("submit", function (e) {
-    e.preventDefault();
+    let form = this;
     let isValid = true;
 
-    $(this)
+    $(form)
       .find("input, textarea, select")
       .each(function () {
         if (!validateField(this)) {
@@ -435,8 +435,8 @@ $(document).ready(function () {
       });
 
     if (
-      $(this).find("#start_date").length &&
-      $(this).find("#end_date").length
+      $(form).find("#start_date").length &&
+      $(form).find("#end_date").length
     ) {
       if (!validateDateRange()) {
         isValid = false;
@@ -446,7 +446,7 @@ $(document).ready(function () {
     if (!isValid) {
       e.preventDefault();
 
-      let firstInvalid = $(this).find(".is-invalid").first();
+      let firstInvalid = $(form).find(".is-invalid").first();
 
       if (firstInvalid.length) {
         firstInvalid[0].scrollIntoView({
@@ -456,8 +456,6 @@ $(document).ready(function () {
 
         firstInvalid.trigger("focus");
       }
-    } else {
-      $(this).trigger("validationSuccess");
     }
   });
 });

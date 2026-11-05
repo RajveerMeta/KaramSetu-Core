@@ -17,11 +17,11 @@ ob_start();
                 <p class="text-charcoal-light">Login to continue your KarmaSetu journey.</p>
             </div>
             
-            <form id="LoginForm" class="space-y-6 validation-form" action="#" method="POST" novalidate>
-                
+            <form id="LoginForm" class="space-y-6 validation-form" action="<?= baseUrl('Database/User/auth/login_form.php') ?>" method="POST" novalidate>
+                <input type="hidden" name="login" value="1">
                 
                 <div id="loginErrorMsg" class="hidden mb-4 p-4 rounded-lg bg-red-50 border border-red-200">
-                    <p class="text-sm font-medium text-red-600">Invalid demo credentials.</p>
+                    <p class="text-sm font-medium text-red-600">Invalid credentials.</p>
                 </div>
                 
                 <div class="space-y-5">
@@ -56,8 +56,18 @@ ob_start();
                     </div>
                 </div>
 
+                <?php
+                if (isset($_SESSION["login_error"])) {
+                    echo '<p class="text-red-600 text-sm mt-2">'
+                        . e($_SESSION["login_error"])
+                        . '</p>';
+
+                    unset($_SESSION["login_error"]);
+                }
+                ?>
+
                 <div class="pt-2">
-                    <button type="submit" 
+                    <button type="submit" name="login" 
                         class="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-full text-white bg-forest hover:bg-forest-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-forest transition-all shadow-md hover:shadow-lg">
                         Login
                     </button>
@@ -75,6 +85,14 @@ ob_start();
         </div>
     </div>
 </div>
+
+<script>
+$(document).ready(function () {
+    $('#LoginForm').off('validationSuccess').on('validationSuccess', function () {
+        HTMLFormElement.prototype.submit.call(this);
+    });
+});
+</script>
 
 <?php
 $content = ob_get_clean();

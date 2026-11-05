@@ -1,467 +1,569 @@
-﻿<?php
+﻿
+<?php
 require_once __DIR__ . '/../../includes/functions.php';
+require_once __DIR__ . '/../../DataBase/db_config.php';
 
-$causes = [
-    [
-        'id' => 1,
-        'name' => 'Education Support Program',
-        'ngo' => 'Seva Roots Initiative',
-        'category' => 'Education',
-        'target' => '₹1,00,000',
-        'raised' => '₹72,500',
-        'progress' => 72,
-        'status' => 'Active'
-    ],
-    [
-        'id' => 2,
-        'name' => 'Community Food Drive',
-        'ngo' => 'Helping Hands Foundation',
-        'category' => 'Food & Nutrition',
-        'target' => '₹75,000',
-        'raised' => '₹61,200',
-        'progress' => 82,
-        'status' => 'Active'
-    ],
-    [
-        'id' => 3,
-        'name' => 'Village Learning Center',
-        'ngo' => 'Udaan Community Trust',
-        'category' => 'Education',
-        'target' => '₹1,50,000',
-        'raised' => '₹1,50,000',
-        'progress' => 100,
-        'status' => 'Completed'
-    ],
-    [
-        'id' => 4,
-        'name' => 'Rajkot Community Kitchen',
-        'ngo' => 'Seva Roots Initiative',
-        'category' => 'Food & Nutrition',
-        'target' => '₹90,000',
-        'raised' => '₹48,500',
-        'progress' => 54,
-        'status' => 'Active'
-    ],
-    [
-        'id' => 5,
-        'name' => 'Digital Literacy for Youth',
-        'ngo' => 'Sarthak Seva Foundation',
-        'category' => 'Education',
-        'target' => '₹1,20,000',
-        'raised' => '₹83,000',
-        'progress' => 69,
-        'status' => 'Active'
-    ],
-    [
-        'id' => 6,
-        'name' => 'Clean Water Initiative',
-        'ngo' => 'Jeevan Jyoti Trust',
-        'category' => 'Community Development',
-        'target' => '₹2,00,000',
-        'raised' => '₹2,00,000',
-        'progress' => 100,
-        'status' => 'Completed'
-    ],
-    [
-        'id' => 7,
-        'name' => 'Green Neighborhood Project',
-        'ngo' => 'Asha Community Foundation',
-        'category' => 'Environment',
-        'target' => '₹80,000',
-        'raised' => '₹34,000',
-        'progress' => 42,
-        'status' => 'Suspended'
-    ],
-    [
-        'id' => 8,
-        'name' => 'Mobile Health Camp',
-        'ngo' => 'Nayi Disha Welfare Trust',
-        'category' => 'Healthcare',
-        'target' => '₹1,00,000',
-        'raised' => '₹65,000',
-        'progress' => 65,
-        'status' => 'Active'
-    ]
-];
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+/* Update cause status */
+if (isset($_POST['update_status'])) {
+    $causeId = (int) $_POST['cause_id'];
+    $newStatus = $_POST['new_status'];
+
+    if ($causeId > 0 && in_array($newStatus, ['active', 'suspended'], true)) {
+        $sql = "UPDATE causes
+                SET status = '$newStatus'
+                WHERE id = $causeId
+                AND status IN ('active', 'suspended')";
+
+        mysqli_query($con, $sql);
+    }
+
+    header('Location: ' . baseUrl('admin/causes/index.php'));
+    exit;
+}
+
+/* Search and filters */
+$search = trim($_GET['search'] ?? '');
+$status = $_GET['status'] ?? '';
+$category = $_GET['category'] ?? '';
+
+$searchSql = mysqli_real_escape_string($con, $search);
+$categorySql = mysqli_real_escape_string($con, $category);
+
+$where = [];
+
+if ($search !== '') {
+    $where[] = "(c.title LIKE '%$searchSql%'
+                 OR n.name LIKE '%$searchSql%')";
+}
+
+if (in_array($status, ['active', 'completed', 'suspended'], true)) {
+    $where[] = "c.status = '$status'";
+} else {
+    $status = '';
+}
+
+if ($category !== '') {
+    $where[] = "c.category = '$categorySql'";
+}
+
+$whereSql = count($where) > 0
+    ? 'WHERE ' . implode(' AND ', $where)
+    : '';
+
+/* Summary counts */
+$totalResult = mysqli_query($con, "SELECT COUNT(*) AS total FROM causes");
+$totalCauses = (int) mysqli_fetch_assoc($totalResult)['total'];
+
+$activeResult = mysqli_query(
+    $con,
+    "SELECT COUNT(*) AS total FROM causes WHERE status = 'active'"
+);
+$activeCauses = (int) mysqli_fetch_assoc($activeResult)['total'];
+
+$completedResult = mysqli_query(
+    $con,
+    "SELECT COUNT(*) AS total FROM causes WHERE status = 'completed'"
+);
+$completedCauses = (int) mysqli_fetch_assoc($completedResult)['total'];
+
+$suspendedResult = mysqli_query(
+    $con,
+    "SELECT COUNT(*) AS total FROM causes WHERE status = 'suspended'"
+);
+$suspendedCauses = (int) mysqli_fetch_assoc($suspendedResult)['total'];
+
+/* Category options */
+$categoryResult = mysqli_query(
+    $con,
+    "SELECT DISTINCT category
+     FROM causes
+     ORDER BY category ASC"
+);
+
+/* Pagination */
+$perPage = 10;
+$page = max(1, (int) ($_GET['page'] ?? 1));
+
+$countSql = "SELECT COUNT(*) AS total
+             FROM causes c
+             LEFT JOIN ngos n ON n.id = c.ngo_id
+             $whereSql";
+
+$countResult = mysqli_query($con, $countSql);
+$totalFiltered = (int) mysqli_fetch_assoc($countResult)['total'];
+
+$totalPages = max(1, (int) ceil($totalFiltered / $perPage));
+$page = min($page, $totalPages);
+$offset = ($page - 1) * $perPage;
+
+/* Causes with fundraising totals */
+$sql = "SELECT
+            c.id,
+            c.ngo_id,
+            c.title,
+            c.category,
+            c.target_amount,
+            c.start_date,
+            c.end_date,
+            c.status,
+            n.name AS ngo_name,
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN co.contribution_type = 'money'
+                         AND co.payment_status = 'completed'
+                        THEN co.monetary_amount
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS raised_amount
+        FROM causes c
+        LEFT JOIN ngos n ON n.id = c.ngo_id
+        LEFT JOIN contributions co ON co.cause_id = c.id
+        $whereSql
+        GROUP BY c.id
+        ORDER BY c.created_at DESC
+        LIMIT $perPage OFFSET $offset";
+
+$result = mysqli_query($con, $sql);
+
+if (!$result) {
+    die('Unable to load causes.');
+}
+
+function causeStatusClass($status)
+{
+    if ($status === 'active') {
+        return 'bg-green-100 text-green-800';
+    }
+
+    if ($status === 'completed') {
+        return 'bg-blue-100 text-blue-800';
+    }
+
+    return 'bg-red-100 text-red-800';
+}
+
+function causeStatusLabel($status)
+{
+    return ucfirst($status);
+}
 
 ob_start();
 ?>
 
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    
-    <!-- Page Header -->
-    <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
-        <div>
-            <h1 class="text-3xl font-serif font-bold text-forest mb-2">Causes Management</h1>
-            <p class="text-charcoal-light max-w-2xl">Manage community causes, monitor fundraising progress, and review cause activity.</p>
-        </div>
-        <div class="mt-4 md:mt-0 bg-ivory border border-gold/30 px-4 py-2 rounded-lg shadow-sm flex items-center">
-            <span class="text-lg font-bold text-forest">6</span>
-            <span class="text-sm font-medium text-charcoal-light ml-2">Active Causes</span>
-        </div>
-    </div>
+<div class="min-h-screen bg-ivory px-4 py-8 sm:px-6 lg:px-8">
+    <div class="mx-auto max-w-7xl">
 
-    <!-- Alert Container -->
-    <div id="alertContainer" class="hidden mb-6 p-4 rounded-lg flex items-center">
-        <svg id="alertIcon" class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"></svg>
-        <span id="alertMessage" class="text-sm font-medium"></span>
-    </div>
-
-    <!-- Summary Cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div class="bg-white rounded-xl border border-charcoal/10 shadow-sm p-5">
-            <p class="text-sm font-medium text-charcoal-light">Total Causes</p>
-            <p class="text-2xl font-bold text-charcoal mt-1">12</p>
-        </div>
-        <div class="bg-white rounded-xl border border-green-200/50 shadow-sm p-5 border-l-4 border-green-500">
-            <p class="text-sm font-medium text-charcoal-light">Active</p>
-            <p class="text-2xl font-bold text-green-700 mt-1">8</p>
-        </div>
-        <div class="bg-white rounded-xl border border-gold/50 shadow-sm p-5 border-l-4 border-gold">
-            <p class="text-sm font-medium text-charcoal-light">Completed</p>
-            <p class="text-2xl font-bold text-yellow-700 mt-1">3</p>
-        </div>
-        <div class="bg-white rounded-xl border border-red-200/50 shadow-sm p-5 border-l-4 border-red-500">
-            <p class="text-sm font-medium text-charcoal-light">Suspended</p>
-            <p class="text-2xl font-bold text-red-700 mt-1">1</p>
-        </div>
-    </div>
-
-    <!-- Filters Section -->
-    <div class="bg-white rounded-xl border border-charcoal/10 shadow-sm p-4 mb-6">
-        <div class="flex flex-col md:flex-row md:items-end space-y-4 md:space-y-0 md:space-x-4">
-            <div class="flex-grow">
-                <label for="searchCause" class="block text-xs font-medium text-charcoal-light mb-1">Search</label>
-                <input type="text" id="searchCause" placeholder="Search causes or NGOs..." class="w-full px-4 py-2 border border-charcoal/20 rounded-md focus:outline-none focus:ring-1 focus:ring-forest text-sm">
-            </div>
-            <div class="w-full md:w-48">
-                <label for="filterStatus" class="block text-xs font-medium text-charcoal-light mb-1">Status</label>
-                <select id="filterStatus" class="w-full px-4 py-2 border border-charcoal/20 rounded-md focus:outline-none focus:ring-1 focus:ring-forest text-sm bg-white">
-                    <option value="">All Status</option>
-                    <option value="Active">Active</option>
-                    <option value="Completed">Completed</option>
-                    <option value="Suspended">Suspended</option>
-                </select>
-            </div>
-            <div class="w-full md:w-48">
-                <label for="filterCategory" class="block text-xs font-medium text-charcoal-light mb-1">Category</label>
-                <select id="filterCategory" class="w-full px-4 py-2 border border-charcoal/20 rounded-md focus:outline-none focus:ring-1 focus:ring-forest text-sm bg-white">
-                    <option value="">All Categories</option>
-                    <option value="Education">Education</option>
-                    <option value="Food & Nutrition">Food & Nutrition</option>
-                    <option value="Community Development">Community Development</option>
-                    <option value="Healthcare">Healthcare</option>
-                    <option value="Environment">Environment</option>
-                </select>
-            </div>
-            <div class="flex space-x-2 w-full md:w-auto">
-                <button type="button" id="btnSearch" class="flex-1 md:flex-none px-4 py-2 bg-forest text-white text-sm font-medium rounded-md hover:bg-forest-dark transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-forest">
-                    Search
-                </button>
-                <button type="button" id="btnClear" class="flex-1 md:flex-none px-4 py-2 bg-ivory-dark text-charcoal text-sm font-medium rounded-md hover:bg-gold/20 border border-charcoal/10 transition-colors focus:outline-none">
-                    Clear
-                </button>
+        <!-- Page Heading -->
+        <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <h1 class="font-serif text-3xl font-bold text-forest">
+                    Causes Management
+                </h1>
+                <p class="mt-2 text-sm text-charcoal/60">
+                    Manage and monitor NGO fundraising causes.
+                </p>
             </div>
         </div>
-    </div>
 
-    <!-- Causes Table -->
-    <div class="bg-white rounded-xl border border-charcoal/10 shadow-sm overflow-hidden mb-6">
-        <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse" id="causesTable">
-                <thead>
-                    <tr class="bg-ivory/50 text-charcoal-light text-sm border-b border-charcoal/10">
-                        <th class="px-6 py-4 font-medium min-w-[200px]">Cause</th>
-                        <th class="px-6 py-4 font-medium min-w-[150px]">NGO</th>
-                        <th class="px-6 py-4 font-medium">Category</th>
-                        <th class="px-6 py-4 font-medium">Target</th>
-                        <th class="px-6 py-4 font-medium">Raised</th>
-                        <th class="px-6 py-4 font-medium min-w-[150px]">Progress</th>
-                        <th class="px-6 py-4 font-medium">Status</th>
-                        <th class="px-6 py-4 font-medium text-right min-w-[150px]">Actions</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-charcoal/5">
-                    <?php foreach ($causes as $cause): ?>
-                    <?php 
-                        $statusClass = '';
-                        $actionLink = baseUrl('admin/causes/view.php?id=' . $cause['id']);
-                        
-                        if ($cause['status'] === 'Active') {
-                            $statusClass = 'bg-green-100 text-green-800 border-green-200';
-                        } elseif ($cause['status'] === 'Completed') {
-                            $statusClass = 'bg-yellow-100 text-yellow-800 border-yellow-200';
-                        } elseif ($cause['status'] === 'Suspended') {
-                            $statusClass = 'bg-red-100 text-red-800 border-red-200';
-                        }
-                    ?>
-                    <tr class="hover:bg-ivory/30 transition-colors cause-row" 
-                        data-id="<?= $cause['id'] ?>"
-                        data-name="<?= strtolower(e($cause['name'])) ?>" 
-                        data-ngo="<?= strtolower(e($cause['ngo'])) ?>"
-                        data-category="<?= e($cause['category']) ?>"
-                        data-status="<?= e($cause['status']) ?>">
-                        <td class="px-6 py-4">
-                            <div class="font-medium text-charcoal"><?= e($cause['name']) ?></div>
-                        </td>
-                        <td class="px-6 py-4">
-                            <div class="text-sm text-charcoal-light"><?= e($cause['ngo']) ?></div>
-                        </td>
-                        <td class="px-6 py-4 text-sm text-charcoal-light">
-                            <?= e($cause['category']) ?>
-                        </td>
-                        <td class="px-6 py-4 text-sm font-medium text-charcoal">
-                            <?= e($cause['target']) ?>
-                        </td>
-                        <td class="px-6 py-4 text-sm font-medium text-forest">
-                            <?= e($cause['raised']) ?>
-                        </td>
-                        <td class="px-6 py-4">
-                            <div class="flex items-center space-x-2">
-                                <div class="w-full bg-ivory rounded-full h-1.5 border border-charcoal/10">
-                                    <div class="bg-forest h-1.5 rounded-full" style="width: <?= e($cause['progress']) ?>%"></div>
-                                </div>
-                                <span class="text-xs font-medium text-charcoal-light w-8 text-right"><?= e($cause['progress']) ?>%</span>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 text-sm status-cell">
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border <?= $statusClass ?>">
-                                <?= e($cause['status']) ?>
-                            </span>
-                        </td>
-                        <td class="px-6 py-4 text-sm text-right action-cell">
-                            <div class="flex items-center justify-end space-x-2">
-                                <a href="<?= $actionLink ?>" class="inline-flex justify-center items-center px-3 py-1.5 border border-forest text-forest hover:bg-forest hover:text-white text-xs font-medium rounded-md transition-colors">
-                                    View
-                                </a>
-                                <?php if ($cause['status'] === 'Active'): ?>
-                                <button type="button" class="btn-toggle-status inline-flex justify-center items-center px-3 py-1.5 border border-red-200 text-red-600 hover:bg-red-50 text-xs font-medium rounded-md transition-colors" data-action="Suspend">
-                                    Suspend
-                                </button>
-                                <?php elseif ($cause['status'] === 'Suspended'): ?>
-                                <button type="button" class="btn-toggle-status inline-flex justify-center items-center px-3 py-1.5 border border-green-200 text-green-700 hover:bg-green-50 text-xs font-medium rounded-md transition-colors" data-action="Activate">
-                                    Activate
-                                </button>
-                                <?php endif; ?>
-                            </div>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
+        <!-- Summary Cards -->
+        <div class="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+
+            <div class="rounded-xl border border-charcoal/10 bg-white p-5 shadow-sm">
+                <p class="text-sm text-charcoal/60">Total Causes</p>
+                <p class="mt-2 text-3xl font-bold text-forest">
+                    <?= $totalCauses ?>
+                </p>
+            </div>
+
+            <div class="rounded-xl border border-charcoal/10 bg-white p-5 shadow-sm">
+                <p class="text-sm text-charcoal/60">Active Causes</p>
+                <p class="mt-2 text-3xl font-bold text-green-700">
+                    <?= $activeCauses ?>
+                </p>
+            </div>
+
+            <div class="rounded-xl border border-charcoal/10 bg-white p-5 shadow-sm">
+                <p class="text-sm text-charcoal/10">Completed Causes</p>
+                <p class="mt-2 text-3xl font-bold text-blue-700">
+                    <?= $completedCauses ?>
+                </p>
+            </div>
+
+            <div class="rounded-xl border border-charcoal/10 bg-white p-5 shadow-sm">
+                <p class="text-sm text-charcoal/60">Suspended Causes</p>
+                <p class="mt-2 text-3xl font-bold text-red-700">
+                    <?= $suspendedCauses ?>
+                </p>
+            </div>
+
         </div>
+
+        <!-- Search and Filters -->
+        <div class="mb-6 rounded-xl border border-charcoal/10 bg-white p-5 shadow-sm">
+            <form method="GET" action="<?= e(baseUrl('admin/causes/index.php')) ?>"
+                  class="grid grid-cols-1 gap-4 md:grid-cols-4">
+
+                <div>
+                    <label for="search" class="mb-2 block text-sm font-medium text-charcoal">
+                        Search causes
+                    </label>
+                    <input
+                        type="text"
+                        id="search"
+                        name="search"
+                        value="<?= e($search) ?>"
+                        placeholder="Cause or NGO name"
+                        class="w-full rounded-lg border border-charcoal/20 px-4 py-2.5 text-sm outline-none focus:border-forest"
+                    >
+                </div>
+
+                <div>
+                    <label for="status" class="mb-2 block text-sm font-medium text-charcoal">
+                        Status
+                    </label>
+                    <select
+                        id="status"
+                        name="status"
+                        class="w-full rounded-lg border border-charcoal/20 bg-white px-4 py-2.5 text-sm outline-none focus:border-forest"
+                    >
+                        <option value="">All Statuses</option>
+                        <option value="active" <?= $status === 'active' ? 'selected' : '' ?>>Active</option>
+                        <option value="completed" <?= $status === 'completed' ? 'selected' : '' ?>>Completed</option>
+                        <option value="suspended" <?= $status === 'suspended' ? 'selected' : '' ?>>Suspended</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="category" class="mb-2 block text-sm font-medium text-charcoal">
+                        Category
+                    </label>
+                    <select
+                        id="category"
+                        name="category"
+                        class="w-full rounded-lg border border-charcoal/20 bg-white px-4 py-2.5 text-sm outline-none focus:border-forest"
+                    >
+                        <option value="">All Categories</option>
+
+                        <?php while ($cat = mysqli_fetch_assoc($categoryResult)): ?>
+                            <option
+                                value="<?= e($cat['category']) ?>"
+                                <?= $category === $cat['category'] ? 'selected' : '' ?>
+                            >
+                                <?= e($cat['category']) ?>
+                            </option>
+                        <?php endwhile; ?>
+                    </select>
+                </div>
+
+                <div class="flex items-end gap-2">
+                    <button
+                        type="submit"
+                        class="rounded-lg bg-forest px-5 py-2.5 text-sm font-semibold text-white hover:bg-forest/90"
+                    >
+                        Search
+                    </button>
+
+                    <a
+                        href="<?= e(baseUrl('admin/causes/index.php')) ?>"
+                        class="rounded-lg border border-charcoal/20 px-5 py-2.5 text-sm font-semibold text-charcoal hover:bg-ivory"
+                    >
+                        Reset
+                    </a>
+                </div>
+            </form>
+        </div>
+
         
-        <!-- Empty State (Hidden by default) -->
-        <div id="emptyState" class="hidden py-12 text-center">
-            <svg class="mx-auto h-12 w-12 text-charcoal-light mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-            </svg>
-            <h3 class="text-lg font-medium text-charcoal">No causes found</h3>
-            <p class="text-sm text-charcoal-light mt-1">Try changing your search or filter criteria.</p>
-        </div>
+<!-- Causes Table -->
+<div class="overflow-hidden rounded-xl border border-charcoal/10 bg-white shadow-sm">
+
+    <div class="flex flex-col gap-2 border-b border-charcoal/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <h2 class="font-serif text-xl font-bold text-forest">
+            All Causes
+        </h2>
+
+        <p class="text-sm text-charcoal/60">
+            <?= $totalFiltered ?> cause(s) found
+        </p>
+    </div>
+
+    <div class="w-full overflow-x-auto">
+        <table class="w-full min-w-[1000px] table-fixed border-collapse">
+
+            <colgroup>
+                <col style="width: 24%;">
+                <col style="width: 16%;">
+                <col style="width: 20%;">
+                <col style="width: 16%;">
+                <col style="width: 12%;">
+                <col style="width: 12%;">
+            </colgroup>
+
+            <thead>
+                <tr class="border-b border-charcoal/10 bg-ivory">
+                    <th class="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wider text-charcoal/60">
+                        Cause
+                    </th>
+
+                    <th class="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wider text-charcoal/60">
+                        NGO
+                    </th>
+
+                    <th class="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wider text-charcoal/60">
+                        Fundraising
+                    </th>
+
+                    <th class="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wider text-charcoal/60">
+                        Dates
+                    </th>
+
+                    <th class="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wider text-charcoal/60">
+                        Status
+                    </th>
+
+                    <th class="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wider text-charcoal/60">
+                        Actions
+                    </th>
+                </tr>
+            </thead>
+
+            <tbody class="divide-y divide-charcoal/10">
+
+                <?php if (mysqli_num_rows($result) > 0): ?>
+
+                    <?php while ($cause = mysqli_fetch_assoc($result)): ?>
+                        <?php
+                        $target = (float) $cause['target_amount'];
+                        $raised = (float) $cause['raised_amount'];
+
+                        $progress = $target > 0
+                            ? min(100, ($raised / $target) * 100)
+                            : 0;
+                        ?>
+
+                        <tr class="transition-colors hover:bg-ivory/50">
+
+                            <td class="break-words px-5 py-5 align-top">
+                                <p class="font-semibold leading-5 text-forest">
+                                    <?= e($cause['title']) ?>
+                                </p>
+
+                                <p class="mt-2 text-sm text-charcoal/60">
+                                    <?= e($cause['category']) ?>
+                                </p>
+
+                                <p class="mt-1 text-xs text-charcoal/50">
+                                    ID: <?= (int) $cause['id'] ?>
+                                </p>
+                            </td>
+
+                            <td class="break-words px-5 py-5 align-top">
+                                <p class="text-sm font-medium leading-5 text-charcoal">
+                                    <?= e($cause['ngo_name'] ?? 'NGO not found') ?>
+                                </p>
+                            </td>
+
+                            <td class="px-5 py-5 align-top">
+                                <p class="whitespace-nowrap text-sm font-semibold text-forest">
+                                    ₹<?= number_format($raised, 2) ?>
+                                </p>
+
+                                <p class="mt-1 whitespace-nowrap text-xs text-charcoal/60">
+                                    of ₹<?= number_format($target, 2) ?>
+                                </p>
+
+                                <div class="mt-3 h-2 w-full overflow-hidden rounded-full bg-charcoal/10">
+                                    <div
+                                        class="h-full rounded-full bg-gold"
+                                        style="width: <?= $progress ?>%;"
+                                    ></div>
+                                </div>
+
+                                <p class="mt-1 text-xs text-charcoal/60">
+                                    <?= number_format($progress, 1) ?>% raised
+                                </p>
+                            </td>
+
+                            <td class="px-5 py-5 align-top">
+                                <p class="text-xs text-charcoal/50">Start date</p>
+                                <p class="mt-1 whitespace-nowrap text-sm text-charcoal">
+                                    <?= e(date('d M Y', strtotime($cause['start_date']))) ?>
+                                </p>
+
+                                <p class="mt-3 text-xs text-charcoal/50">End date</p>
+                                <p class="mt-1 whitespace-nowrap text-sm text-charcoal">
+                                    <?= e(date('d M Y', strtotime($cause['end_date']))) ?>
+                                </p>
+                            </td>
+
+                            <td class="px-5 py-5 align-top">
+                                <span class="inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold <?= causeStatusClass($cause['status']) ?>">
+                                    <?= e(causeStatusLabel($cause['status'])) ?>
+                                </span>
+                            </td>
+
+                            <td class="px-5 py-5 align-top">
+                                <div class="flex flex-col items-start gap-3">
+
+                                    <a
+                                        href="<?= e(baseUrl('admin/causes/view.php?id=' . (int) $cause['id'])) ?>"
+                                        class="text-sm font-semibold text-forest hover:underline"
+                                    >
+                                        View Details
+                                    </a>
+
+                                    <?php if ($cause['status'] === 'active' || $cause['status'] === 'suspended'): ?>
+                                        <form
+                                            method="POST"
+                                            action="<?= e(baseUrl('admin/causes/index.php')) ?>"
+                                        >
+                                            <input
+                                                type="hidden"
+                                                name="cause_id"
+                                                value="<?= (int) $cause['id'] ?>"
+                                            >
+
+                                            <input
+                                                type="hidden"
+                                                name="new_status"
+                                                value="<?= $cause['status'] === 'active' ? 'suspended' : 'active' ?>"
+                                            >
+
+                                            <button
+                                                type="submit"
+                                                name="update_status"
+                                                value="1"
+                                                class="text-sm font-semibold <?= $cause['status'] === 'active' ? 'text-red-700' : 'text-green-700' ?> hover:underline"
+                                            >
+                                                <?= $cause['status'] === 'active' ? 'Suspend' : 'Activate' ?>
+                                            </button>
+                                        </form>
+                                    <?php endif; ?>
+
+                                </div>
+                            </td>
+
+                        </tr>
+
+                    <?php endwhile; ?>
+
+                <?php else: ?>
+
+                    <tr>
+                        <td colspan="6" class="px-5 py-16 text-center">
+                            <div class="flex flex-col items-center">
+                                <h3 class="text-base font-semibold text-charcoal">
+                                    No causes found
+                                </h3>
+
+                                <p class="mt-2 text-sm text-charcoal/60">
+                                    Try changing your search or filter options.
+                                </p>
+                            </div>
+                        </td>
+                    </tr>
+
+                <?php endif; ?>
+
+            </tbody>
+        </table>
     </div>
 
     <!-- Pagination -->
-    <div class="flex items-center justify-between pt-2 pb-6">
-        <div class="flex flex-col sm:flex-row flex-wrap sm:items-center justify-between gap-4 w-full">
-            <div>
-                <p class="text-sm text-charcoal-light">
-                    Showing <span class="font-medium text-charcoal">1</span> to <span class="font-medium text-charcoal">8</span> of <span class="font-medium text-charcoal">12</span> results
-                </p>
+    <?php if ($totalPages > 1): ?>
+        <div class="flex flex-col gap-3 border-t border-charcoal/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+
+            <p class="text-sm text-charcoal/60">
+                Page <?= $page ?> of <?= $totalPages ?>
+            </p>
+
+            <div class="flex gap-2">
+                <?php if ($page > 1): ?>
+                    <a
+                        href="?<?= e(http_build_query([
+                            'search' => $search,
+                            'status' => $status,
+                            'category' => $category,
+                            'page' => $page - 1
+                        ])) ?>"
+                        class="rounded-lg border border-charcoal/20 px-4 py-2 text-sm hover:bg-ivory"
+                    >
+                        Previous
+                    </a>
+                <?php endif; ?>
+
+                <?php if ($page < $totalPages): ?>
+                    <a
+                        href="?<?= e(http_build_query([
+                            'search' => $search,
+                            'status' => $status,
+                            'category' => $category,
+                            'page' => $page + 1
+                        ])) ?>"
+                        class="rounded-lg border border-charcoal/20 px-4 py-2 text-sm hover:bg-ivory"
+                    >
+                        Next
+                    </a>
+                <?php endif; ?>
             </div>
-            <div>
-                <nav class="relative z-0 inline-flex flex-wrap rounded-md shadow-sm -space-x-px justify-center" aria-label="Pagination">
-                    <a href="#" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-charcoal/20 bg-white text-sm font-medium text-charcoal-light hover:bg-ivory transition-colors">
-                        <span class="sr-only">Previous</span>
-                        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
-                        </svg>
-                    </a>
-                    <a href="#" aria-current="page" class="z-10 bg-forest/5 border-forest text-forest relative inline-flex items-center px-4 py-2 border text-sm font-medium">
-                        1
-                    </a>
-                    <a href="#" class="bg-white border-charcoal/20 text-charcoal-light hover:bg-ivory relative inline-flex items-center px-4 py-2 border text-sm font-medium transition-colors">
-                        2
-                    </a>
-                    <a href="#" class="bg-white border-charcoal/20 text-charcoal-light hover:bg-ivory relative inline-flex items-center px-4 py-2 border text-sm font-medium transition-colors">
-                        3
-                    </a>
-                    <a href="#" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-charcoal/20 bg-white text-sm font-medium text-charcoal-light hover:bg-ivory transition-colors">
-                        <span class="sr-only">Next</span>
-                        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-                        </svg>
-                    </a>
-                </nav>
-            </div>
+
         </div>
-        <div class="flex items-center justify-between w-full sm:hidden mt-4">
-            <a href="#" class="relative inline-flex items-center px-4 py-2 border border-charcoal/20 text-sm font-medium rounded-md text-charcoal bg-white hover:bg-ivory">
-                Previous
-            </a>
-            <a href="#" class="ml-3 relative inline-flex items-center px-4 py-2 border border-charcoal/20 text-sm font-medium rounded-md text-charcoal bg-white hover:bg-ivory">
-                Next
-            </a>
-        </div>
-    </div>
+    <?php endif; ?>
+
 </div>
 
-<!-- Status Toggle Modal -->
-<div id="statusModal" class="fixed inset-0 z-[100] hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div class="fixed inset-0 bg-charcoal/60 backdrop-blur-sm transition-opacity" aria-hidden="true" id="statusOverlay"></div>
-        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-        
-        <div class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-charcoal/10">
-            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <div class="sm:flex sm:items-start">
-                    <div id="modalIconContainer" class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full sm:mx-0 sm:h-10 sm:w-10">
-                        <svg id="modalIcon" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"></svg>
-                    </div>
-                    <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                        <h3 class="text-lg leading-6 font-medium font-serif" id="modalTitle">Confirm Action</h3>
-                        <div class="mt-2">
-                            <p class="text-sm text-charcoal-light" id="modalDescription">Are you sure you want to proceed?</p>
-                        </div>
+
+            <!-- Pagination -->
+            <?php if ($totalPages > 1): ?>
+                <div class="flex flex-col gap-3 border-t border-charcoal/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                    <p class="text-sm text-charcoal/60">
+                        Page <?= $page ?> of <?= $totalPages ?>
+                    </p>
+
+                    <div class="flex gap-2">
+                        <?php if ($page > 1): ?>
+                            <a
+                                href="?<?= e(http_build_query([
+                                    'search' => $search,
+                                    'status' => $status,
+                                    'category' => $category,
+                                    'page' => $page - 1
+                                ])) ?>"
+                                class="rounded-lg border border-charcoal/20 px-4 py-2 text-sm hover:bg-ivory"
+                            >
+                                Previous
+                            </a>
+                        <?php endif; ?>
+
+                        <?php if ($page < $totalPages): ?>
+                            <a
+                                href="?<?= e(http_build_query([
+                                    'search' => $search,
+                                    'status' => $status,
+                                    'category' => $category,
+                                    'page' => $page + 1
+                                ])) ?>"
+                                class="rounded-lg border border-charcoal/20 px-4 py-2 text-sm hover:bg-ivory"
+                            >
+                                Next
+                            </a>
+                        <?php endif; ?>
                     </div>
                 </div>
-            </div>
-            <div class="bg-ivory/50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse border-t border-charcoal/10">
-                <button type="button" id="btnConfirmStatus" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white focus:outline-none sm:ml-3 sm:w-auto sm:text-sm transition-colors">
-                    Confirm
-                </button>
-                <button type="button" id="btnCancelStatus" class="mt-3 w-full inline-flex justify-center rounded-md border border-charcoal/20 shadow-sm px-4 py-2 bg-white text-base font-medium text-charcoal hover:bg-ivory focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm transition-colors">
-                    Cancel
-                </button>
-            </div>
+            <?php endif; ?>
         </div>
+
     </div>
 </div>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const searchInput = document.getElementById('searchCause');
-        const filterStatus = document.getElementById('filterStatus');
-        const filterCategory = document.getElementById('filterCategory');
-        const btnSearch = document.getElementById('btnSearch');
-        const btnClear = document.getElementById('btnClear');
-        const rows = document.querySelectorAll('.cause-row');
-        const emptyState = document.getElementById('emptyState');
-
-        
-        
-        
-
-        const statusModal = document.getElementById('statusModal');
-        const btnConfirmStatus = document.getElementById('btnConfirmStatus');
-        
-        let targetRow = null;
-        let targetAction = '';
-
-        document.querySelectorAll('.btn-toggle-status').forEach(button => {
-            button.addEventListener('click', function(e) {
-                e.preventDefault();
-                targetRow = this.closest('tr');
-                targetAction = this.getAttribute('data-action');
-                
-                const modalTitle = document.getElementById('modalTitle');
-                const modalDesc = document.getElementById('modalDescription');
-                const modalIcon = document.getElementById('modalIcon');
-                const modalIconContainer = document.getElementById('modalIconContainer');
-                
-                if (targetAction === 'Suspend') {
-                    modalTitle.textContent = 'Suspend this cause?';
-                    modalTitle.className = 'text-lg leading-6 font-medium font-serif text-red-800';
-                    modalDesc.textContent = "This will temporarily hide the cause from active listings.";
-                    modalIconContainer.className = 'mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10';
-                    modalIcon.className.baseVal = 'h-6 w-6 text-red-600';
-                    modalIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />';
-                    
-                    btnConfirmStatus.className = 'w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm transition-colors';
-                    btnConfirmStatus.textContent = 'Suspend Cause';
-                } else {
-                    modalTitle.textContent = 'Activate this cause?';
-                    modalTitle.className = 'text-lg leading-6 font-medium font-serif text-green-800';
-                    modalDesc.textContent = "This cause will be visible and active for users.";
-                    modalIconContainer.className = 'mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-green-100 sm:mx-0 sm:h-10 sm:w-10';
-                    modalIcon.className.baseVal = 'h-6 w-6 text-green-600';
-                    modalIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />';
-                    
-                    btnConfirmStatus.className = 'w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm transition-colors';
-                    btnConfirmStatus.textContent = 'Activate Cause';
-                }
-                
-                statusModal.classList.remove('hidden');
-            });
-        });
-
-        document.getElementById('btnCancelStatus').addEventListener('click', () => {
-            statusModal.classList.add('hidden');
-        });
-        
-        document.getElementById('statusOverlay').addEventListener('click', () => {
-            statusModal.classList.add('hidden');
-        });
-        
-        btnConfirmStatus.addEventListener('click', () => {
-            statusModal.classList.add('hidden');
-            
-            if (targetRow && targetAction) {
-                const statusCell = targetRow.querySelector('.status-cell');
-                const button = targetRow.querySelector('.btn-toggle-status');
-                
-                if (targetAction === 'Suspend') {
-                    targetRow.setAttribute('data-status', 'Suspended');
-                    statusCell.innerHTML = '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-red-100 text-red-800 border-red-200">Suspended</span>';
-                    
-                    button.setAttribute('data-action', 'Activate');
-                    button.textContent = 'Activate';
-                    button.className = 'btn-toggle-status inline-flex justify-center items-center px-3 py-1.5 border border-green-200 text-green-700 hover:bg-green-50 text-xs font-medium rounded-md transition-colors';
-                    
-                    showAlert('Cause suspended successfully.', 'error');
-                } else {
-                    targetRow.setAttribute('data-status', 'Active');
-                    statusCell.innerHTML = '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-green-100 text-green-800 border-green-200">Active</span>';
-                    
-                    button.setAttribute('data-action', 'Suspend');
-                    button.textContent = 'Suspend';
-                    button.className = 'btn-toggle-status inline-flex justify-center items-center px-3 py-1.5 border border-red-200 text-red-600 hover:bg-red-50 text-xs font-medium rounded-md transition-colors';
-                    
-                    showAlert('Cause activated successfully.', 'success');
-                }
-                
-                
-            }
-        });
-
-        function showAlert(message, type) {
-            const container = document.getElementById('alertContainer');
-            const icon = document.getElementById('alertIcon');
-            const msg = document.getElementById('alertMessage');
-            
-            msg.textContent = message;
-            
-            if (type === 'success') {
-                container.className = 'mb-6 p-4 rounded-lg flex items-center bg-green-50 border border-green-200';
-                icon.className.baseVal = 'w-5 h-5 mr-3 text-green-500';
-                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />';
-                msg.className = 'text-sm font-medium text-green-800';
-            } else {
-                container.className = 'mb-6 p-4 rounded-lg flex items-center bg-amber-50 border border-amber-200';
-                icon.className.baseVal = 'w-5 h-5 mr-3 text-amber-500';
-                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />';
-                msg.className = 'text-sm font-medium text-amber-800';
-            }
-            
-            container.classList.remove('hidden');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-    });
-</script>
 
 <?php
 $content = ob_get_clean();
 require_once __DIR__ . '/../../includes/layouts/admin.php';
 ?>
-
-

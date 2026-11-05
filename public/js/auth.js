@@ -1,46 +1,12 @@
 $(document).ready(function () {
-  /* Authentication and user/NGO/admin navigation */
-  
-  /* Authentication and user/NGO/admin navigation */
-  const storedUserData = localStorage.getItem("karmaSetuDemoUser");
-
-  if (storedUserData !== null) {
-    try {
-      const demoUserData = JSON.parse(storedUserData);
-
-      $(".user-name").text(demoUserData.name || "");
-      $(".user-email").text(demoUserData.email || "");
-
-      const userInitials = (demoUserData.name || "User")
-        .split(" ")
-        .map((namePart) => namePart[0])
-        .join("")
-        .substring(0, 2)
-        .toUpperCase();
-
-      $(".user-initial").text(userInitials);
-
-      // Hide guest buttons and show the logged-in dropdown
-      $(".auth-guest").hide();
-      $(".auth-user").css("display", "block");
-
-    } catch (error) {
-      console.log("Invalid demo user data.");
-      $(".auth-user").hide();
-      $(".auth-guest").css("display", "flex");
-    }
-  } else {
-    // Show guest buttons and hide the logged-in dropdown
-    $(".auth-user").hide();
-    $(".auth-guest").css("display", "flex");
-  }
-
-
   /* Logout */
-  $(".logout-btn").on("click", function () {
-    localStorage.removeItem("karmaSetuDemoUser");
-    window.location.reload();
+  $(".logout-btn").on("click", function (e) {
+    if (!$(this).attr("href")) {
+      e.preventDefault();
+      window.location.href = jsBaseUrl("auth/logout.php");
+    }
   });
+
 
   /* Login modal */
   $(".login-btn").on("click", function () {
@@ -76,59 +42,10 @@ $(document).ready(function () {
     }, 300);
   });
 
-  /* Demo login */
+  /* Login form submission */
   if ($("#LoginForm").length) {
-    $("#LoginForm").on("submit", function (submitEvent) {
-      submitEvent.preventDefault();
-
-      const emailInput = $("#email");
-      const passwordInput = $("#password");
-      const errorMsg = $("#loginErrorMsg");
-
-      const email = $.trim(emailInput.val());
-      const password = passwordInput.val();
-
-      errorMsg.addClass("hidden");
-      emailInput.removeClass("border-red-500");
-      passwordInput.removeClass("border-red-500");
-
-      if (email === "demo@karmasetu.test" && password === "Demo@12345") {
-        const demoUser = {
-          name: "Rajveer Meta",
-          email: "demo@karmasetu.test",
-          role: "user",
-          karmaPoints: 1280,
-        };
-
-        localStorage.setItem("karmaSetuDemoUser", JSON.stringify(demoUser));
-
-        window.location.href = jsBaseUrl("user/dashboard.php");
-      } else if (email === "demo@ngo.test" && password === "Ngo@12345") {
-        const demoNgo = {
-          name: "Seva Roots Initiative",
-          email: "demo@ngo.test",
-          role: "ngo",
-        };
-
-        localStorage.setItem("karmaSetuDemoUser", JSON.stringify(demoNgo));
-
-        window.location.href = jsBaseUrl("ngo/dashboard.php");
-      } else if (email === "admin@karmasetu.com" && password === "Admin@123") {
-        const demoAdmin = {
-          name: "Administrator",
-          email: "admin@karmasetu.com",
-          role: "admin",
-        };
-
-        localStorage.setItem("karmaSetuDemoUser", JSON.stringify(demoAdmin));
-
-        window.location.href = jsBaseUrl("admin/dashboard.php");
-      } else {
-        errorMsg.removeClass("hidden").text("Invalid email or password.");
-
-        emailInput.addClass("border-red-500");
-        passwordInput.addClass("border-red-500");
-      }
+    $("#LoginForm").on("validationSuccess", function () {
+      HTMLFormElement.prototype.submit.call(this);
     });
 
     /* Clear login error while typing */
@@ -139,56 +56,6 @@ $(document).ready(function () {
     });
   }
 
-  /* Protected page access */
-  const userPages = [
-    jsBaseUrl("user/dashboard.php"),
-    jsBaseUrl("user/contributions.php"),
-    jsBaseUrl("user/events.php"),
-    jsBaseUrl("user/volunteer-activities.php"),
-    jsBaseUrl("user/profile.php"),
-  ];
-
-  const ngoPages = [
-    jsBaseUrl("ngo/dashboard.php"),
-    jsBaseUrl("ngo/causes.php"),
-    jsBaseUrl("ngo/events/index.php"),
-    jsBaseUrl("ngo/donations.php"),
-    jsBaseUrl("ngo/profile.php"),
-  ];
-
-  const currentPage = window.location.pathname;
-  const demoUser = localStorage.getItem("karmaSetuDemoUser");
-  const userData = demoUser ? JSON.parse(demoUser) : null;
-
-  /* Admin page protection */
-  if (currentPage.includes("/admin/")) {
-    if (!userData || userData.role !== "admin") {
-      if (userData && userData.role === "user") {
-        window.location.href = jsBaseUrl("user/dashboard.php");
-      } else if (userData && userData.role === "ngo") {
-        window.location.href = jsBaseUrl("ngo/dashboard.php");
-      } else {
-        window.location.href = jsBaseUrl("auth/login.php");
-      }
-
-      return;
-    }
-  }
-
-  /* User/NGO page protection */
-  if (
-    (userPages.includes(currentPage) || ngoPages.includes(currentPage)) &&
-    !demoUser
-  ) {
-    window.location.href = jsBaseUrl("auth/login.php");
-  }
-
-  $("#userDropdownBtn").on("click", function (clickEvent) {
-    clickEvent.stopPropagation();
-    $("#userDropdownMenu").fadeToggle(150);
-    $("#userDropdownIcon").toggleClass("rotate-180");
-  });
-
   $("#ngoDropdownBtn").on("click", function (clickEvent) {
     clickEvent.stopPropagation();
     $("#ngoDropdownMenu").fadeToggle(150);
@@ -196,8 +63,6 @@ $(document).ready(function () {
   });
 
   $(document).on("click", function () {
-    $("#userDropdownMenu").fadeOut(150);
-    $("#userDropdownIcon").removeClass("rotate-180");
     $("#ngoDropdownMenu").fadeOut(150);
     $("#ngoDropdownIcon").removeClass("rotate-180");
   });

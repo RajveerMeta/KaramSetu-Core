@@ -238,12 +238,12 @@ ob_start();
                             <span class="font-bold text-charcoal"><?= e($user->member_since) ?></span>
                         </p>
                         <div class="flex flex-col md:flex-row gap-2">
-                            <a href="#" class="block text-center flex-1 px-4 py-2.5 border border-charcoal/10 text-sm font-bold rounded-full text-charcoal bg-ivory/30 hover:bg-ivory-dark transition-colors shadow-sm hover:shadow-md">
+                            <a href="<?= baseUrl('user/profile.php') ?>" class="block text-center flex-1 px-4 py-2.5 border border-charcoal/10 text-sm font-bold rounded-full text-charcoal bg-ivory/30 hover:bg-ivory-dark transition-colors shadow-sm hover:shadow-md">
                                 View Profile
                             </a>
-                            <button id="demoLogoutBtn" class="block text-center flex-1 px-4 py-2.5 border border-red-200 text-sm font-bold rounded-full text-red-600 bg-red-50 hover:bg-red-100 transition-colors shadow-sm hover:shadow-md">
+                            <a href="<?= baseUrl('auth/logout.php') ?>" id="demoLogoutBtn" class="logout-btn block text-center flex-1 px-4 py-2.5 border border-red-200 text-sm font-bold rounded-full text-red-600 bg-red-50 hover:bg-red-100 transition-colors shadow-sm hover:shadow-md">
                                 Logout
-                            </button>
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -332,7 +332,7 @@ ob_start();
             logoutBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 localStorage.removeItem('karmaSetuDemoUser');
-                window.location.href = '<?= baseUrl('auth/login.php') ?>';
+                window.location.href = '<?= baseUrl('auth/logout.php') ?>';
             });
         }
     });

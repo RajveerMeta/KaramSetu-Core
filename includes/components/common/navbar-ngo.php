@@ -29,8 +29,8 @@
 
                 <div class="auth-ngo relative min-w-0">
                     <button id="ngoDropdownBtn" class="flex items-center space-x-2 text-charcoal hover:text-forest text-sm font-medium transition-colors focus:outline-none min-w-0 text-left max-w-[140px] sm:max-w-none">
-                        <span class="flex-shrink-0 flex items-center justify-center h-8 w-8 rounded-full bg-forest text-white text-xs font-serif font-bold shadow-sm user-initial"></span>
-                        <span class="user-name truncate min-w-0"></span>
+                        <span class="flex-shrink-0 flex items-center justify-center h-8 w-8 rounded-full bg-forest text-white text-xs font-serif font-bold shadow-sm user-initial"><?= e(!empty($_SESSION['user_name']) ? strtoupper(mb_substr(trim($_SESSION['user_name']), 0, 1, 'UTF-8')) : 'N') ?></span>
+                        <span class="user-name truncate min-w-0"><?= e($_SESSION['user_name'] ?? 'NGO') ?></span>
                         <svg class="flex-shrink-0 w-4 h-4 transition-transform duration-200" id="ngoDropdownIcon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                     </button>
                     
@@ -39,7 +39,7 @@
                         <a href="<?= baseUrl('ngo/dashboard.php') ?>" class="block px-4 py-2 text-sm text-charcoal hover:bg-ivory-dark hover:text-forest transition-colors">NGO Dashboard</a>
                         <a href="<?= baseUrl('ngo/profile.php') ?>" class="block px-4 py-2 text-sm text-charcoal hover:bg-ivory-dark hover:text-forest transition-colors">Manage Profile</a>
                         <div class="border-t border-charcoal/5 my-1"></div>
-                        <button class="logout-btn block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors font-medium">Logout</button>
+                        <a href="<?= baseUrl('auth/logout.php') ?>" class="logout-btn block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors font-medium">Logout</a>
                     </div>
                 </div>
 

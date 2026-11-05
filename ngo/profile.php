@@ -1,234 +1,707 @@
 <?php
 require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../Database/db_config.php';
 
 ob_start();
+
+$user_id = isset($_SESSION['user_id']) ? (int) $_SESSION['user_id'] : 0;
+
+$ngo = null;
+$documents = [];
+$total_causes = 0;
+$active_causes = 0;
+$profile_completion = 0;
+$errorMsg = '';
+
+if ($user_id > 0) {
+
+    // Get NGO profile and user contact details
+    $ngoQuery = mysqli_query(
+        $con,
+        "SELECT 
+            n.*,
+            u.name AS user_name,
+            u.email AS user_email,
+            u.phone AS user_phone
+        FROM ngos n
+        LEFT JOIN users u ON n.user_id = u.id
+        WHERE n.user_id = $user_id
+        LIMIT 1"
+    );
+
+    if ($ngoQuery && mysqli_num_rows($ngoQuery) > 0) {
+
+        $ngo = mysqli_fetch_assoc($ngoQuery);
+
+        $ngo_id = (int) $ngo['id'];
+
+        // Get NGO documents
+        $documentQuery = mysqli_query(
+            $con,
+            "SELECT *
+             FROM ngo_documents
+             WHERE ngo_id = $ngo_id
+             ORDER BY created_at DESC"
+        );
+
+        if ($documentQuery) {
+            while ($document = mysqli_fetch_assoc($documentQuery)) {
+                $documents[] = $document;
+            }
+        }
+
+        // Get cause statistics
+        $causeQuery = mysqli_query(
+            $con,
+            "SELECT
+                COUNT(*) AS total_causes,
+                SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active_causes
+             FROM causes
+             WHERE ngo_id = $ngo_id"
+        );
+
+        if ($causeQuery) {
+            $causeData = mysqli_fetch_assoc($causeQuery);
+
+            $total_causes = (int) ($causeData['total_causes'] ?? 0);
+            $active_causes = (int) ($causeData['active_causes'] ?? 0);
+        }
+
+        // Calculate profile completion
+        $profileFields = [
+            'name',
+            'registration_number',
+            'established_date',
+            'ngo_type',
+            'primary_cause',
+            'description',
+            'mission',
+            'official_email',
+            'phone',
+            'contact_person',
+            'contact_designation',
+            'address',
+            'city',
+            'state',
+            'pincode'
+        ];
+
+        $completedFields = 0;
+
+        foreach ($profileFields as $field) {
+            if (!empty($ngo[$field])) {
+                $completedFields++;
+            }
+        }
+
+        $profile_completion = (int) round(
+            ($completedFields / count($profileFields)) * 100
+        );
+
+    } else {
+        $errorMsg = 'NGO profile not found.';
+    }
+
+} else {
+    $errorMsg = 'Please login to view your NGO profile.';
+}
+
+// Verification status
+$verificationStatus = $ngo['verification_status'] ?? 'pending';
+
+$statusLabels = [
+    'approved' => 'Verified NGO',
+    'pending' => 'Pending Verification',
+    'rejected' => 'Verification Rejected',
+    'suspended' => 'Account Suspended'
+];
+
+$statusClasses = [
+    'approved' => 'bg-green-100 text-green-800',
+    'pending' => 'bg-amber-100 text-amber-800',
+    'rejected' => 'bg-red-100 text-red-800',
+    'suspended' => 'bg-gray-100 text-gray-800'
+];
+
+$statusLabel = $statusLabels[$verificationStatus] ?? 'Unknown Status';
+$statusClass = $statusClasses[$verificationStatus] ?? 'bg-gray-100 text-gray-800';
+
+// Document labels
+$documentLabels = [
+    'registration_certificate' => 'Registration Certificate',
+    'pan_card' => 'PAN Card',
+    'address_proof' => 'Address Proof',
+    'supporting_document' => 'Supporting Document',
+    'other' => 'Other Document'
+];
+
+// NGO type labels
+$ngoTypeLabels = [
+    'trust' => 'Trust',
+    'society' => 'Society',
+    'section_8' => 'Section 8 Company',
+    'other' => 'Other'
+];
+
+$establishedYear = '';
+
+if (!empty($ngo['established_date'])) {
+    $establishedYear = date('Y', strtotime($ngo['established_date']));
+}
 ?>
-<div class="min-h-screen bg-ivory py-12 px-4 sm:px-6 lg:px-8">
+
+<div class="min-h-screen bg-ivory py-10 px-4 sm:px-6 lg:px-8">
+
     <div class="max-w-7xl mx-auto">
-        <!-- HEADER -->
-        <div class="mb-10 flex flex-wrap items-end justify-between gap-4">
+
+        <!-- PAGE HEADER -->
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+
             <div>
-                <h1 class="text-2xl md:text-4xl font-serif font-bold text-forest mb-2">NGO Profile</h1>
-                <div class="flex flex-wrap items-center gap-2 text-sm">
-                    <span class="bg-forest/10 text-forest font-bold px-3 py-1 rounded-full flex items-center shadow-sm">
-                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                        Verified NGO
-                    </span>
-                    <span class="text-charcoal-light">|</span>
-                    <span class="text-charcoal-light">Manage Organization Details</span>
-                </div>
-            </div>
-            <div class="flex flex-wrap gap-3">
-                <a href="<?= baseUrl('ngo/edit-profile.php') ?>" class="inline-block bg-forest text-white font-bold py-2.5 px-6 rounded-full hover:bg-forest-dark transition-colors shadow-sm text-center no-underline">
-                 Edit Profile
-                </a>
+                <h1 class="text-3xl font-serif font-bold text-forest">
+                    NGO Profile
+                </h1>
 
-                <!-- <button href="<?= baseUrl('ngo/edit-profile.php') ?>" type="button" class="inline-block bg-forest text-white font-bold py-2.5 px-6 rounded-full hover:bg-forest-dark transition-colors shadow-sm">
+                <p class="text-charcoal/60 mt-2">
+                    View your organization's profile information.
+                </p>
+            </div>
+
+            <?php if ($ngo) : ?>
+                <a href="<?= baseUrl('ngo/edit-profile.php') ?>"
+                   class="inline-flex items-center justify-center gap-2 px-5 py-3 bg-forest text-white rounded-lg font-semibold hover:bg-forest/90 transition">
+
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+
                     Edit Profile
-                </button> -->
-            </div>
+                </a>
+            <?php endif; ?>
+
         </div>
 
-        <div class="flex flex-col lg:grid lg:grid-cols-3 gap-8 w-full">
-            <!-- MAIN CONTENT (Left 2 Columns) -->
-            <div class="lg:col-span-2 space-y-8">
-                
-                <!-- ORGANIZATION INFORMATION -->
-                <div class="bg-white rounded-3xl p-4 md:p-8 shadow-sm border border-gold/20">
-                    <h2 class="text-xl md:text-2xl font-serif font-bold text-forest mb-6 border-b border-charcoal/10 pb-4">Organization Information</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label class="block text-xs font-bold text-charcoal-light uppercase tracking-wide mb-1">Organization Name</label>
-                            <div class="text-lg font-bold text-charcoal">Seva Roots Initiative</div>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-charcoal-light uppercase tracking-wide mb-1">Registration Number</label>
-                            <div class="text-lg font-medium text-charcoal">NGO-GJ-2018-00123</div>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-charcoal-light uppercase tracking-wide mb-1">Founded Year</label>
-                            <div class="text-lg font-medium text-charcoal">2018</div>
-                        </div>
-                        <div class="md:col-span-2">
-                            <label class="block text-xs font-bold text-charcoal-light uppercase tracking-wide mb-1">Description</label>
-                            <div class="text-base text-charcoal leading-relaxed">
-                                Seva Roots Initiative works with local communities to support education, community development, and essential resources for people in need.
-                            </div>
-                        </div>
+        <?php if (!empty($errorMsg)) : ?>
+
+            <div class="bg-red-50 border border-red-200 text-red-700 rounded-xl p-5">
+                <?= $errorMsg ?>
+            </div>
+
+        <?php elseif ($ngo) : ?>
+
+            <!-- PROFILE HEADER CARD -->
+            <div class="bg-white rounded-2xl shadow-sm border border-charcoal/10 p-6 mb-8">
+
+                <div class="flex flex-col sm:flex-row sm:items-center gap-5">
+
+                    <div class="w-20 h-20 rounded-2xl bg-forest flex items-center justify-center shrink-0">
+
+                        <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                                  d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7l8-4z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                                  d="M9 12l2 2 4-4"/>
+                        </svg>
+
                     </div>
+
+                    <div class="flex-1 min-w-0">
+
+                        <h2 class="text-2xl font-bold text-forest break-words">
+                            <?= $ngo['name'] ?>
+                        </h2>
+
+                        <p class="text-sm text-charcoal/60 mt-1">
+                            <?= $ngoTypeLabels[$ngo['ngo_type']] ?? $ngo['ngo_type'] ?>
+                        </p>
+
+                        <div class="flex flex-wrap items-center gap-3 mt-3">
+
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold <?= $statusClass ?>">
+                                <?= $statusLabel ?>
+                            </span>
+
+                            <span class="text-sm text-charcoal/60">
+                                Registration No:
+                                <span class="font-semibold text-charcoal">
+                                    <?= $ngo['registration_number'] ?>
+                                </span>
+                            </span>
+
+                        </div>
+
+                    </div>
+
                 </div>
 
-                <!-- CONTACT & ADDRESS -->
-                <div class="flex flex-col md:grid md:grid-cols-2 gap-8 w-full">
+            </div>
+
+            <!-- MAIN GRID -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+                <!-- LEFT CONTENT -->
+                <div class="lg:col-span-2 space-y-8">
+
+                    <!-- ORGANIZATION INFORMATION -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-charcoal/10 p-6">
+
+                        <h3 class="text-xl font-serif font-bold text-forest mb-6">
+                            Organization Information
+                        </h3>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+
+                            <div>
+                                <p class="text-sm text-charcoal/50 mb-1">
+                                    Organization Name
+                                </p>
+                                <p class="font-semibold text-charcoal break-words">
+                                    <?= $ngo['name'] ?>
+                                </p>
+                            </div>
+
+                            <div>
+                                <p class="text-sm text-charcoal/50 mb-1">
+                                    Registration Number
+                                </p>
+                                <p class="font-semibold text-charcoal break-words">
+                                    <?= $ngo['registration_number'] ?>
+                                </p>
+                            </div>
+
+                            <div>
+                                <p class="text-sm text-charcoal/50 mb-1">
+                                    Established Year
+                                </p>
+                                <p class="font-semibold text-charcoal">
+                                    <?= $establishedYear ?: 'Not available' ?>
+                                </p>
+                            </div>
+
+                            <div>
+                                <p class="text-sm text-charcoal/50 mb-1">
+                                    Organization Type
+                                </p>
+                                <p class="font-semibold text-charcoal">
+                                    <?= $ngoTypeLabels[$ngo['ngo_type']] ?? $ngo['ngo_type'] ?>
+                                </p>
+                            </div>
+
+                            <div class="sm:col-span-2">
+                                <p class="text-sm text-charcoal/50 mb-1">
+                                    Primary Cause
+                                </p>
+                                <p class="font-semibold text-charcoal break-words">
+                                    <?= $ngo['primary_cause'] ?>
+                                </p>
+                            </div>
+
+                            <div class="sm:col-span-2">
+                                <p class="text-sm text-charcoal/50 mb-2">
+                                    About Organization
+                                </p>
+                                <p class="text-charcoal/80 leading-relaxed whitespace-pre-line break-words">
+                                    <?= $ngo['description'] ?>
+                                </p>
+                            </div>
+
+                            <div class="sm:col-span-2">
+                                <p class="text-sm text-charcoal/50 mb-2">
+                                    Our Mission
+                                </p>
+                                <p class="text-charcoal/80 leading-relaxed whitespace-pre-line break-words">
+                                    <?= !empty($ngo['mission']) ? $ngo['mission'] : 'Mission information has not been added yet.' ?>
+                                </p>
+                            </div>
+
+                        </div>
+
+                    </div>
+
                     <!-- CONTACT INFORMATION -->
-                    <div class="bg-white rounded-3xl p-4 md:p-8 shadow-sm border border-gold/20">
-                        <h2 class="text-xl font-serif font-bold text-forest mb-6 border-b border-charcoal/10 pb-4">Contact Info</h2>
-                        <div class="space-y-4">
+                    <div class="bg-white rounded-2xl shadow-sm border border-charcoal/10 p-6">
+
+                        <h3 class="text-xl font-serif font-bold text-forest mb-6">
+                            Contact Information
+                        </h3>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+
                             <div>
-                                <label class="block text-xs font-bold text-charcoal-light uppercase tracking-wide mb-1">Email</label>
-                                <div class="text-base font-medium text-charcoal">demo@ngo.test</div>
+                                <p class="text-sm text-charcoal/50 mb-1">
+                                    Official Email
+                                </p>
+                                <p class="font-semibold text-charcoal break-all">
+                                    <?= $ngo['official_email'] ?>
+                                </p>
                             </div>
+
                             <div>
-                                <label class="block text-xs font-bold text-charcoal-light uppercase tracking-wide mb-1">Phone</label>
-                                <div class="text-base font-medium text-charcoal">+91 98765 43210</div>
+                                <p class="text-sm text-charcoal/50 mb-1">
+                                    Phone Number
+                                </p>
+                                <p class="font-semibold text-charcoal">
+                                    <?= $ngo['phone'] ?>
+                                </p>
                             </div>
+
                             <div>
-                                <label class="block text-xs font-bold text-charcoal-light uppercase tracking-wide mb-1">Website</label>
-                                <a href="#" class="text-base font-medium text-gold hover:text-forest transition-colors">https://sevaroots.example</a>
+                                <p class="text-sm text-charcoal/50 mb-1">
+                                    Contact Person
+                                </p>
+                                <p class="font-semibold text-charcoal">
+                                    <?= $ngo['contact_person'] ?>
+                                </p>
                             </div>
+
+                            <div>
+                                <p class="text-sm text-charcoal/50 mb-1">
+                                    Designation
+                                </p>
+                                <p class="font-semibold text-charcoal">
+                                    <?= $ngo['contact_designation'] ?>
+                                </p>
+                            </div>
+
+                            <div class="sm:col-span-2">
+                                <p class="text-sm text-charcoal/50 mb-1">
+                                    Website
+                                </p>
+
+                                <?php if (!empty($ngo['website'])) : ?>
+                                    <a href="<?= $ngo['website'] ?>"
+                                       target="_blank"
+                                       class="font-semibold text-gold hover:text-forest break-all">
+                                        <?= $ngo['website'] ?>
+                                    </a>
+                                <?php else : ?>
+                                    <p class="text-charcoal/50">
+                                        Website not added
+                                    </p>
+                                <?php endif; ?>
+
+                            </div>
+
                         </div>
+
                     </div>
 
-                    <!-- ADDRESS -->
-                    <div class="bg-white rounded-3xl p-4 md:p-8 shadow-sm border border-gold/20">
-                        <h2 class="text-xl font-serif font-bold text-forest mb-6 border-b border-charcoal/10 pb-4">Address</h2>
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-xs font-bold text-charcoal-light uppercase tracking-wide mb-1">Street</label>
-                                <div class="text-base font-medium text-charcoal">12 Community Road</div>
+                    <!-- ADDRESS INFORMATION -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-charcoal/10 p-6">
+
+                        <h3 class="text-xl font-serif font-bold text-forest mb-6">
+                            Address Information
+                        </h3>
+
+                        <div class="flex items-start gap-4">
+
+                            <div class="w-11 h-11 rounded-xl bg-ivory flex items-center justify-center shrink-0">
+
+                                <svg class="w-6 h-6 text-forest" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M12 21s7-5.5 7-12a7 7 0 10-14 0c0 6.5 7 12 7 12z"/>
+                                    <circle cx="12" cy="9" r="2.5" stroke-width="2"/>
+                                </svg>
+
                             </div>
-                            <div>
-                                <label class="block text-xs font-bold text-charcoal-light uppercase tracking-wide mb-1">City</label>
-                                <div class="text-base font-medium text-charcoal">Rajkot</div>
+
+                            <div class="min-w-0">
+
+                                <p class="font-semibold text-charcoal break-words">
+                                    <?= $ngo['address'] ?>
+                                </p>
+
+                                <p class="text-sm text-charcoal/60 mt-2 break-words">
+                                    <?= $ngo['city'] ?>,
+                                    <?= $ngo['state'] ?> -
+                                    <?= $ngo['pincode'] ?>
+                                </p>
+
                             </div>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-xs font-bold text-charcoal-light uppercase tracking-wide mb-1">State</label>
-                                    <div class="text-base font-medium text-charcoal">Gujarat</div>
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-bold text-charcoal-light uppercase tracking-wide mb-1">Pincode</label>
-                                    <div class="text-base font-medium text-charcoal">360001</div>
-                                </div>
-                            </div>
+
                         </div>
+
                     </div>
+
+                    <!-- IMPACT INFORMATION -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-charcoal/10 p-6">
+
+                        <h3 class="text-xl font-serif font-bold text-forest mb-6">
+                            Impact Information
+                        </h3>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-6">
+
+                            <div class="bg-ivory rounded-xl p-5">
+                                <p class="text-sm text-charcoal/60">
+                                    Total Causes
+                                </p>
+
+                                <p class="text-3xl font-bold text-forest mt-2">
+                                    <?= $total_causes ?>
+                                </p>
+                            </div>
+
+                            <div class="bg-ivory rounded-xl p-5">
+                                <p class="text-sm text-charcoal/60">
+                                    Active Causes
+                                </p>
+
+                                <p class="text-3xl font-bold text-forest mt-2">
+                                    <?= $active_causes ?>
+                                </p>
+                            </div>
+
+                        </div>
+
+                        <p class="text-sm text-charcoal/50 mb-2">
+                            Impact Summary
+                        </p>
+
+                        <p class="text-charcoal/80 leading-relaxed whitespace-pre-line break-words">
+                            <?= !empty($ngo['impact_summary']) ? $ngo['impact_summary'] : 'Impact summary has not been added yet.' ?>
+                        </p>
+
+                    </div>
+
+                    <!-- VERIFICATION DOCUMENTS -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-charcoal/10 p-6">
+
+                        <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+
+                            <h3 class="text-xl font-serif font-bold text-forest">
+                                Verification Documents
+                            </h3>
+
+                            <span class="text-sm text-charcoal/50">
+                                <?= count($documents) ?> document(s)
+                            </span>
+
+                        </div>
+
+                        <?php if (!empty($documents)) : ?>
+
+                            <div class="space-y-4">
+
+                                <?php foreach ($documents as $document) : ?>
+
+                                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-charcoal/10 rounded-xl p-4">
+
+                                        <div class="flex items-center gap-3 min-w-0">
+
+                                            <div class="w-11 h-11 rounded-lg bg-ivory flex items-center justify-center shrink-0">
+
+                                                <svg class="w-6 h-6 text-forest" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                          d="M7 3h7l5 5v13H7a2 2 0 01-2-2V5a2 2 0 012-2z"/>
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                          d="M14 3v5h5M9 13h6M9 17h6"/>
+                                                </svg>
+
+                                            </div>
+
+                                            <div class="min-w-0">
+
+                                                <p class="font-semibold text-charcoal break-words">
+                                                    <?= $documentLabels[$document['document_type']] ?? 'Document' ?>
+                                                </p>
+
+                                                <p class="text-xs text-charcoal/50 mt-1 break-words">
+                                                    <?= $document['file_name'] ?>
+                                                </p>
+
+                                                <p class="text-xs text-charcoal/50 mt-1">
+                                                    Uploaded:
+                                                    <?= date('d M Y', strtotime($document['created_at'])) ?>
+                                                </p>
+
+                                            </div>
+
+                                        </div>
+
+                                        <a href="<?= baseUrl($document['file_path']) ?>"
+                                           target="_blank"
+                                           class="inline-flex items-center justify-center px-4 py-2 border border-forest text-forest rounded-lg text-sm font-semibold hover:bg-forest hover:text-white transition shrink-0">
+
+                                            View Document
+
+                                        </a>
+
+                                    </div>
+
+                                <?php endforeach; ?>
+
+                            </div>
+
+                        <?php else : ?>
+
+                            <div class="text-center py-8">
+
+                                <p class="text-charcoal/60">
+                                    No verification documents uploaded yet.
+                                </p>
+
+                            </div>
+
+                        <?php endif; ?>
+
+                    </div>
+
                 </div>
 
-                <!-- IMPACT INFORMATION -->
-                <div class="bg-white rounded-3xl p-4 md:p-8 shadow-sm border border-gold/20">
-                    <h2 class="text-xl md:text-2xl font-serif font-bold text-forest mb-6 border-b border-charcoal/10 pb-4">Impact Information</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div class="bg-ivory/30 p-4 rounded-xl border border-charcoal/5 text-center">
-                            <div class="text-sm font-bold text-charcoal-light uppercase tracking-wide mb-1">People Helped</div>
-                            <div class="text-xl md:text-3xl font-serif font-bold text-forest">15,000+</div>
+                <!-- RIGHT SIDEBAR -->
+                <div class="space-y-8">
+
+                    <!-- PROFILE COMPLETION -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-charcoal/10 p-6">
+
+                        <h3 class="text-lg font-bold text-forest mb-5">
+                            Profile Completion
+                        </h3>
+
+                        <div class="flex items-center justify-between mb-2">
+
+                            <span class="text-sm text-charcoal/60">
+                                Profile Progress
+                            </span>
+
+                            <span class="font-bold text-forest">
+                                <?= $profile_completion ?>%
+                            </span>
+
                         </div>
-                        <div class="bg-ivory/30 p-4 rounded-xl border border-charcoal/5 text-center">
-                            <div class="text-sm font-bold text-charcoal-light uppercase tracking-wide mb-1">Projects Completed</div>
-                            <div class="text-xl md:text-3xl font-serif font-bold text-forest">42</div>
+
+                        <div class="w-full h-3 bg-charcoal/10 rounded-full overflow-hidden">
+
+                            <div class="h-full bg-forest rounded-full transition-all"
+                                 style="width: <?= $profile_completion ?>%">
+                            </div>
+
                         </div>
-                        <div class="bg-ivory/30 p-4 rounded-xl border border-charcoal/5 text-center">
-                            <div class="text-sm font-bold text-charcoal-light uppercase tracking-wide mb-1">Areas Served</div>
-                            <div class="text-xl md:text-3xl font-serif font-bold text-forest">5</div>
-                        </div>
+
+                        <p class="text-xs text-charcoal/50 mt-3">
+                            Complete your organization information to improve your profile.
+                        </p>
+
+                        <a href="<?= baseUrl('ngo/edit-profile.php') ?>"
+                           class="block text-center mt-5 px-4 py-3 bg-forest text-white rounded-lg font-semibold hover:bg-forest/90 transition">
+                            Complete Profile
+                        </a>
+
                     </div>
+
+                    <!-- VERIFICATION STATUS -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-charcoal/10 p-6">
+
+                        <h3 class="text-lg font-bold text-forest mb-5">
+                            Verification Status
+                        </h3>
+
+                        <div class="flex items-center gap-3">
+
+                            <div class="w-11 h-11 rounded-full bg-ivory flex items-center justify-center shrink-0">
+
+                                <svg class="w-6 h-6 text-forest" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M9 12l2 2 4-4m5-1a8 8 0 11-16 0 8 8 0 0116 0z"/>
+                                </svg>
+
+                            </div>
+
+                            <div class="min-w-0">
+
+                                <p class="font-semibold text-charcoal">
+                                    <?= $statusLabel ?>
+                                </p>
+
+                                <span class="inline-flex mt-1 px-2 py-1 rounded-full text-xs font-semibold <?= $statusClass ?>">
+                                    <?= ucfirst($verificationStatus) ?>
+                                </span>
+
+                            </div>
+
+                        </div>
+
+                        <?php if ($verificationStatus === 'approved' && !empty($ngo['verified_at'])) : ?>
+
+                            <p class="text-xs text-charcoal/50 mt-4">
+                                Verified on:
+                                <?= date('d M Y', strtotime($ngo['verified_at'])) ?>
+                            </p>
+
+                        <?php elseif ($verificationStatus === 'rejected' && !empty($ngo['rejection_reason'])) : ?>
+
+                            <div class="mt-4 p-3 rounded-lg bg-red-50 border border-red-100">
+
+                                <p class="text-xs font-semibold text-red-700 mb-1">
+                                    Rejection Reason
+                                </p>
+
+                                <p class="text-sm text-red-700 break-words">
+                                    <?= $ngo['rejection_reason'] ?>
+                                </p>
+
+                            </div>
+
+                        <?php elseif ($verificationStatus === 'pending') : ?>
+
+                            <p class="text-sm text-charcoal/60 mt-4">
+                                Your documents and organization details are waiting for admin verification.
+                            </p>
+
+                        <?php endif; ?>
+
+                    </div>
+
+                    <!-- ORGANIZATION DETAILS -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-charcoal/10 p-6">
+
+                        <h3 class="text-lg font-bold text-forest mb-5">
+                            Organization Details
+                        </h3>
+
+                        <div class="space-y-4">
+
+                            <div>
+                                <p class="text-xs text-charcoal/50">
+                                    NGO ID
+                                </p>
+                                <p class="font-semibold text-charcoal mt-1">
+                                    #<?= $ngo['id'] ?>
+                                </p>
+                            </div>
+
+                            <div>
+                                <p class="text-xs text-charcoal/50">
+                                    Registered On
+                                </p>
+                                <p class="font-semibold text-charcoal mt-1">
+                                    <?= date('d M Y', strtotime($ngo['created_at'])) ?>
+                                </p>
+                            </div>
+
+                            <div>
+                                <p class="text-xs text-charcoal/50">
+                                    Last Updated
+                                </p>
+                                <p class="font-semibold text-charcoal mt-1">
+                                    <?= date('d M Y', strtotime($ngo['updated_at'])) ?>
+                                </p>
+                            </div>
+
+                        </div>
+
+                    </div>
+
                 </div>
 
             </div>
 
-            <!-- SIDEBAR CONTENT -->
-            <div class="space-y-6 lg:space-y-8">
-                
-                <!-- PROFILE COMPLETION -->
-                <div class="bg-white rounded-3xl p-4 md:p-6 shadow-sm border border-gold/20">
-                    <h3 class="text-lg font-serif font-bold text-forest mb-4">Profile Completion</h3>
-                    
-                    <div class="flex items-end justify-between mb-2">
-                        <span class="text-sm font-bold text-charcoal">Overall Status</span>
-                        <span class="text-xl font-bold text-forest">85%</span>
-                    </div>
-                    
-                    <div class="w-full bg-ivory rounded-full h-2.5 mb-6 overflow-hidden border border-charcoal/5">
-                        <div class="bg-forest h-2.5 rounded-full" style="width: 85%"></div>
-                    </div>
-                    
-                    <div class="space-y-3">
-                        <div class="flex items-center text-sm">
-                            <svg class="w-5 h-5 text-forest mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                            <span class="text-charcoal-light">Organization information</span>
-                        </div>
-                        <div class="flex items-center text-sm">
-                            <svg class="w-5 h-5 text-forest mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                            <span class="text-charcoal-light">Contact information</span>
-                        </div>
-                        <div class="flex items-center text-sm">
-                            <svg class="w-5 h-5 text-forest mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                            <span class="text-charcoal-light">Address & Documents</span>
-                        </div>
-                        <div class="flex items-center text-sm opacity-60">
-                            <div class="w-5 h-5 rounded-full border-2 border-charcoal/30 mr-2 flex-shrink-0"></div>
-                            <span class="text-charcoal-light">Impact information</span>
-                        </div>
-                    </div>
-                </div>
+        <?php endif; ?>
 
-                <!-- VERIFICATION STATUS -->
-                <div class="bg-gradient-to-br from-white to-ivory rounded-3xl p-4 md:p-6 shadow-sm border border-gold/20 relative overflow-hidden">
-                    <div class="absolute -right-4 -top-4 w-24 h-24 bg-forest/5 rounded-full blur-2xl pointer-events-none"></div>
-                    <h3 class="text-xl font-serif font-bold text-forest mb-4 relative z-10">Verification Status</h3>
-                    <div class="flex items-start space-x-4 relative z-10">
-                        <div class="w-12 h-12 rounded-full bg-forest text-white flex items-center justify-center shadow-md flex-shrink-0">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                        </div>
-                        <div>
-                            <h4 class="text-base font-bold text-charcoal">Verified NGO</h4>
-                            <p class="text-sm text-charcoal-light leading-relaxed">Your organization has been verified by KarmaSetu.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- VERIFICATION DOCUMENTS -->
-                <div class="bg-white rounded-3xl p-4 md:p-6 shadow-sm border border-gold/20">
-                    <h3 class="text-lg font-serif font-bold text-forest mb-4">Verification Documents</h3>
-                    
-                    <div class="space-y-4">
-                        <div class="flex flex-wrap items-center justify-between gap-4 p-3 bg-ivory/30 rounded-xl border border-charcoal/5">
-                            <div class="flex items-center">
-                                <svg class="w-8 h-8 text-charcoal/40 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                                <div>
-                                    <p class="text-sm font-bold text-charcoal">Registration Certificate</p>
-                                    <p class="text-xs text-forest font-medium mt-0.5 flex items-center">
-                                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                        Verified
-                                    </p>
-                                </div>
-                            </div>
-                            <button class="text-xs font-bold text-gold hover:text-forest transition-colors">View</button>
-                        </div>
-
-                        <div class="flex flex-wrap items-center justify-between gap-4 p-3 bg-ivory/30 rounded-xl border border-charcoal/5">
-                            <div class="flex items-center">
-                                <svg class="w-8 h-8 text-charcoal/40 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2"></path></svg>
-                                <div>
-                                    <p class="text-sm font-bold text-charcoal">NGO Identity Document</p>
-                                    <p class="text-xs text-forest font-medium mt-0.5 flex items-center">
-                                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                        Verified
-                                    </p>
-                                </div>
-                            </div>
-                            <button class="text-xs font-bold text-gold hover:text-forest transition-colors">View</button>
-                        </div>
-
-                        <div class="flex flex-wrap items-center justify-between gap-4 p-3 bg-ivory/30 rounded-xl border border-charcoal/5">
-                            <div class="flex items-center">
-                                <svg class="w-8 h-8 text-charcoal/40 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
-                                <div>
-                                    <p class="text-sm font-bold text-charcoal">Address Proof</p>
-                                    <p class="text-xs text-forest font-medium mt-0.5 flex items-center">
-                                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                        Verified
-                                    </p>
-                                </div>
-                            </div>
-                            <button class="text-xs font-bold text-gold hover:text-forest transition-colors">View</button>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-        </div>
     </div>
+
 </div>
 
 <?php

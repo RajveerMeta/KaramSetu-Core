@@ -1,5 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../Database/admin/dashboard_data.php';
+
 
 ob_start();
 ?>
@@ -21,7 +23,9 @@ ob_start();
             </div>
             <div>
                 <p class="text-sm font-medium text-charcoal-light">Total Users</p>
-                <p class="text-2xl font-bold text-charcoal">1,248</p>
+                <p class="text-2xl font-bold text-charcoal">
+                    <?= number_format($totalUsers) ?>
+                </p>
             </div>
         </div>
         
@@ -32,7 +36,7 @@ ob_start();
             </div>
             <div>
                 <p class="text-sm font-medium text-charcoal-light">Registered NGOs</p>
-                <p class="text-2xl font-bold text-charcoal">86</p>
+                <p class="text-2xl font-bold text-charcoal"><?= number_format($totalNGOs) ?></p>
             </div>
         </div>
 
@@ -43,7 +47,7 @@ ob_start();
             </div>
             <div>
                 <p class="text-sm font-medium text-charcoal-light">Pending NGO Approvals</p>
-                <p class="text-2xl font-bold text-charcoal">12</p>
+                <p class="text-2xl font-bold text-charcoal"><?= number_format($pendingNGOs) ?></p>
             </div>
         </div>
 
@@ -54,7 +58,7 @@ ob_start();
             </div>
             <div>
                 <p class="text-sm font-medium text-charcoal-light">Total Contributions</p>
-                <p class="text-2xl font-bold text-charcoal">₹2,84,500</p>
+                <p class="text-2xl font-bold text-charcoal">₹<?= number_format((float)$totalContributions, 2) ?></p>
             </div>
         </div>
     </div>
@@ -82,41 +86,42 @@ ob_start();
                                 <th class="px-6 py-3 font-medium text-right">Action</th>
                             </tr>
                         </thead>
+
                         <tbody class="divide-y divide-charcoal/5">
-                            <tr class="hover:bg-ivory/30 transition-colors">
-                                <td class="px-6 py-4 text-sm font-medium text-charcoal">Seva Roots Initiative</td>
-                                <td class="px-6 py-4 text-sm text-charcoal-light">Rajkot</td>
-                                <td class="px-6 py-4 text-sm text-charcoal-light">22 Sep 2026</td>
-                                <td class="px-6 py-4 text-sm">
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Pending</span>
-                                </td>
-                                <td class="px-6 py-4 text-sm text-right">
-                                    <a href="<?= baseUrl('admin/ngos/review.php?id=1') ?>" class="inline-flex justify-center items-center px-3 py-1.5 border border-forest text-forest hover:bg-forest hover:text-white text-xs font-medium rounded-md transition-colors">Review</a>
-                                </td>
-                            </tr>
-                            <tr class="hover:bg-ivory/30 transition-colors">
-                                <td class="px-6 py-4 text-sm font-medium text-charcoal">Helping Hands Foundation</td>
-                                <td class="px-6 py-4 text-sm text-charcoal-light">Ahmedabad</td>
-                                <td class="px-6 py-4 text-sm text-charcoal-light">21 Sep 2026</td>
-                                <td class="px-6 py-4 text-sm">
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Pending</span>
-                                </td>
-                                <td class="px-6 py-4 text-sm text-right">
-                                    <a href="<?= baseUrl('admin/ngos/review.php?id=2') ?>" class="inline-flex justify-center items-center px-3 py-1.5 border border-forest text-forest hover:bg-forest hover:text-white text-xs font-medium rounded-md transition-colors">Review</a>
-                                </td>
-                            </tr>
-                            <tr class="hover:bg-ivory/30 transition-colors">
-                                <td class="px-6 py-4 text-sm font-medium text-charcoal">Udaan Community Trust</td>
-                                <td class="px-6 py-4 text-sm text-charcoal-light">Surat</td>
-                                <td class="px-6 py-4 text-sm text-charcoal-light">20 Sep 2026</td>
-                                <td class="px-6 py-4 text-sm">
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Pending</span>
-                                </td>
-                                <td class="px-6 py-4 text-sm text-right">
-                                    <a href="<?= baseUrl('admin/ngos/review.php?id=3') ?>" class="inline-flex justify-center items-center px-3 py-1.5 border border-forest text-forest hover:bg-forest hover:text-white text-xs font-medium rounded-md transition-colors">Review</a>
-                                </td>
-                            </tr>
-                        </tbody>
+                            <?php if (!empty($pendingNGOList)) { ?>
+                                <?php foreach ($pendingNGOList as $ngo) { ?>
+                                    <tr class="hover:bg-ivory/30 transition-colors">
+                                        <td class="px-6 py-4 text-sm font-medium text-charcoal">
+                                            <?= htmlspecialchars($ngo['name']) ?>
+                                        </td>
+                                        <td class="px-6 py-4 text-sm text-charcoal-light">
+                                            <?= htmlspecialchars($ngo['city'] ?? '') ?>
+                                        </td>
+                                        <td class="px-6 py-4 text-sm text-charcoal-light">
+                                            <?= !empty($ngo['created_at']) ? date('d M Y', strtotime($ngo['created_at'])) : '-' ?>
+                                        </td>
+                                        <td class="px-6 py-4 text-sm">
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                                                <?= htmlspecialchars(ucfirst($ngo['verification_status'])) ?>
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 text-sm text-right">
+                                            <a href="<?= baseUrl('admin/ngos/view.php?id=' . $ngo['id']) ?>"
+                                               class="inline-flex justify-center items-center px-3 py-1.5 border border-forest text-forest hover:bg-forest hover:text-white text-xs font-medium rounded-md transition-colors">
+                                                Review
+                                            </a>
+                                        </td>
+                                    </tr>
+                                <?php } ?>
+                            <?php } else { ?>
+                                <tr>
+                                    <td colspan="5" class="px-6 py-6 text-center text-sm text-charcoal-light">
+                                        No pending NGO approvals.
+                                    </td>
+                                </tr>
+                                <?php } ?>
+                            </tbody>
+
                     </table>
                 </div>
             </div>
@@ -139,42 +144,29 @@ ob_start();
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-charcoal/5">
-                            <tr class="hover:bg-ivory/30 transition-colors">
-                                <td class="px-6 py-4 text-sm font-medium text-charcoal">Rajveer Meta</td>
-                                <td class="px-6 py-4 text-sm text-charcoal-light">Education Support</td>
-                                <td class="px-6 py-4 text-sm font-semibold text-forest">₹2,000</td>
-                                <td class="px-6 py-4 text-sm text-charcoal-light">25 Sep 2026</td>
-                                <td class="px-6 py-4 text-sm">
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Completed</span>
-                                </td>
-                            </tr>
-                            <tr class="hover:bg-ivory/30 transition-colors">
-                                <td class="px-6 py-4 text-sm font-medium text-charcoal">Ananya Patel</td>
-                                <td class="px-6 py-4 text-sm text-charcoal-light">Food & Nutrition</td>
-                                <td class="px-6 py-4 text-sm font-semibold text-forest">₹1,500</td>
-                                <td class="px-6 py-4 text-sm text-charcoal-light">25 Sep 2026</td>
-                                <td class="px-6 py-4 text-sm">
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Completed</span>
-                                </td>
-                            </tr>
-                            <tr class="hover:bg-ivory/30 transition-colors">
-                                <td class="px-6 py-4 text-sm font-medium text-charcoal">Dev Mehta</td>
-                                <td class="px-6 py-4 text-sm text-charcoal-light">Community Development</td>
-                                <td class="px-6 py-4 text-sm font-semibold text-forest">₹3,000</td>
-                                <td class="px-6 py-4 text-sm text-charcoal-light">24 Sep 2026</td>
-                                <td class="px-6 py-4 text-sm">
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Completed</span>
-                                </td>
-                            </tr>
-                            <tr class="hover:bg-ivory/30 transition-colors">
-                                <td class="px-6 py-4 text-sm font-medium text-charcoal">Aarav Shah</td>
-                                <td class="px-6 py-4 text-sm text-charcoal-light">Food & Nutrition</td>
-                                <td class="px-6 py-4 text-sm font-semibold text-forest">₹750</td>
-                                <td class="px-6 py-4 text-sm text-charcoal-light">24 Sep 2026</td>
-                                <td class="px-6 py-4 text-sm">
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Completed</span>
-                                </td>
-                            </tr>
+                            <?php if (!empty($recentContributions)) { ?>
+                                <?php foreach ($recentContributions as $contribution) { ?>
+                                    <tr>
+                                        <td class="px-6 py-4 text-sm text-charcoal">
+                                            #<?= htmlspecialchars($contribution['id']) ?>
+                                        </td>
+
+                                        <td class="px-6 py-4 text-sm text-charcoal">
+                                            ₹<?= number_format((float) $contribution['monetary_amount'], 2) ?>
+                                        </td>
+
+                                        <td class="px-6 py-4 text-sm">
+                                            <?= htmlspecialchars(ucfirst($contribution['payment_status'])) ?>
+                                        </td>
+                                    </tr>
+                                <?php } ?>
+                            <?php } else { ?>
+                                <tr>
+                                    <td colspan="3" class="px-6 py-6 text-center text-sm text-charcoal">
+                                        No contributions found.
+                                    </td>
+                                </tr>
+                            <?php } ?>
                         </tbody>
                     </table>
                 </div>

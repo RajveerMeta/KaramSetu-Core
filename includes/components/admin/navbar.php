@@ -45,7 +45,7 @@ $nav_items = [
                     <div id="userDropdownMenu" style="display:none;" class="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-charcoal/10 overflow-hidden z-50 py-2">
                         <a href="<?= baseUrl('admin/profile.php') ?>" class="block px-4 py-2 text-sm text-charcoal hover:bg-ivory-dark hover:text-forest transition-colors">Profile</a>
                         <div class="border-t border-charcoal/5 my-1"></div>
-                        <a href="#" class="logout-btn block px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors font-medium">Logout</a>
+                        <a href="<?= baseUrl('auth/logout.php') ?>" class="logout-btn block px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors font-medium">Logout</a>
                     </div>
                 </div>
 

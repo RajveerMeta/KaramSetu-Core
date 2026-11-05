@@ -1,72 +1,5 @@
 ﻿<?php
-require_once __DIR__ . '/../../includes/functions.php';
-
-$ngos = [
-    [
-        'id' => 1,
-        'name' => 'Seva Roots Initiative',
-        'location' => 'Rajkot',
-        'email' => 'contact@sevaroots.org',
-        'registered' => '22 Sep 2026',
-        'status' => 'Pending'
-    ],
-    [
-        'id' => 2,
-        'name' => 'Helping Hands Foundation',
-        'location' => 'Ahmedabad',
-        'email' => 'hello@helpinghands.org',
-        'registered' => '21 Sep 2026',
-        'status' => 'Pending'
-    ],
-    [
-        'id' => 3,
-        'name' => 'Udaan Community Trust',
-        'location' => 'Surat',
-        'email' => 'info@udaantrust.org',
-        'registered' => '20 Sep 2026',
-        'status' => 'Pending'
-    ],
-    [
-        'id' => 4,
-        'name' => 'Sarthak Seva Foundation',
-        'location' => 'Vadodara',
-        'email' => 'contact@sarthakseva.org',
-        'registered' => '18 Sep 2026',
-        'status' => 'Approved'
-    ],
-    [
-        'id' => 5,
-        'name' => 'Jeevan Jyoti Trust',
-        'location' => 'Rajkot',
-        'email' => 'info@jeevanjyoti.org',
-        'registered' => '15 Sep 2026',
-        'status' => 'Approved'
-    ],
-    [
-        'id' => 6,
-        'name' => 'Asha Community Foundation',
-        'location' => 'Ahmedabad',
-        'email' => 'hello@ashafoundation.org',
-        'registered' => '12 Sep 2026',
-        'status' => 'Approved'
-    ],
-    [
-        'id' => 7,
-        'name' => 'Nayi Disha Welfare Trust',
-        'location' => 'Surat',
-        'email' => 'contact@nayidisha.org',
-        'registered' => '09 Sep 2026',
-        'status' => 'Rejected'
-    ],
-    [
-        'id' => 8,
-        'name' => 'Jan Kalyan Initiative',
-        'location' => 'Vadodara',
-        'email' => 'info@jankalyan.org',
-        'registered' => '05 Sep 2026',
-        'status' => 'Suspended'
-    ],
-];
+require_once __DIR__ . '/../../DataBase/admin/ngos/index.php';
 
 ob_start();
 ?>
@@ -86,59 +19,75 @@ ob_start();
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div class="bg-white rounded-xl border border-charcoal/10 shadow-sm p-5">
             <p class="text-sm font-medium text-charcoal-light">Total NGOs</p>
-            <p class="text-2xl font-bold text-charcoal mt-1">86</p>
+            <p class="text-2xl font-bold text-charcoal mt-1"><?php echo count($ngos); ?></p>
         </div>
         <div class="bg-white rounded-xl border border-amber-200/50 shadow-sm p-5 border-l-4 border-amber-400">
             <p class="text-sm font-medium text-charcoal-light">Pending</p>
-            <p class="text-2xl font-bold text-amber-700 mt-1">12</p>
+            <p class="text-2xl font-bold text-amber-700 mt-1"><?php echo $counts['pending']; ?></p>
         </div>
         <div class="bg-white rounded-xl border border-green-200/50 shadow-sm p-5 border-l-4 border-green-500">
             <p class="text-sm font-medium text-charcoal-light">Approved</p>
-            <p class="text-2xl font-bold text-green-700 mt-1">68</p>
+            <p class="text-2xl font-bold text-green-700 mt-1"><?php echo $counts['approved']; ?></p>
         </div>
         <div class="bg-white rounded-xl border border-red-200/50 shadow-sm p-5 border-l-4 border-red-500">
             <p class="text-sm font-medium text-charcoal-light">Rejected</p>
-            <p class="text-2xl font-bold text-red-700 mt-1">6</p>
+            <p class="text-2xl font-bold text-red-700 mt-1"><?php echo $counts['rejected']; ?></p>
         </div>
     </div>
 
     <!-- Filters Section -->
+     <form method="GET" action="">
     <div class="bg-white rounded-xl border border-charcoal/10 shadow-sm p-4 mb-6">
         <div class="flex flex-col md:flex-row md:items-end space-y-4 md:space-y-0 md:space-x-4">
             <div class="flex-grow">
                 <label for="searchNGO" class="block text-xs font-medium text-charcoal-light mb-1">Search</label>
-                <input type="text" id="searchNGO" placeholder="Search NGO by name..." class="w-full px-4 py-2 border border-charcoal/20 rounded-md focus:outline-none focus:ring-1 focus:ring-forest text-sm">
+                <input
+                    type="text"
+                    id="searchNGO"
+                    name="search"
+                    value="<?= e($search) ?>"
+                    placeholder="Search NGO by name..."
+                    class="w-full px-4 py-2 border border-charcoal/20 rounded-md focus:outline-none focus:ring-1 focus:ring-forest text-sm">
+                        
             </div>
             <div class="w-full md:w-48">
                 <label for="filterStatus" class="block text-xs font-medium text-charcoal-light mb-1">Status</label>
-                <select id="filterStatus" class="w-full px-4 py-2 border border-charcoal/20 rounded-md focus:outline-none focus:ring-1 focus:ring-forest text-sm bg-white">
+                <select name="status" id="filterStatus"
+                    class="w-full px-4 py-2 border border-charcoal/20 rounded-md bg-white text-sm">
+
                     <option value="">All Status</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Approved">Approved</option>
-                    <option value="Rejected">Rejected</option>
-                    <option value="Suspended">Suspended</option>
+                    <option value="pending" <?= $status === 'pending' ? 'selected' : '' ?>>Pending</option>
+                    <option value="approved" <?= $status === 'approved' ? 'selected' : '' ?>>Approved</option>
+                    <option value="rejected" <?= $status === 'rejected' ? 'selected' : '' ?>>Rejected</option>
+                    <option value="suspended" <?= $status === 'suspended' ? 'selected' : '' ?>>Suspended</option>
                 </select>
             </div>
             <div class="w-full md:w-48">
                 <label for="filterLocation" class="block text-xs font-medium text-charcoal-light mb-1">Location</label>
-                <select id="filterLocation" class="w-full px-4 py-2 border border-charcoal/20 rounded-md focus:outline-none focus:ring-1 focus:ring-forest text-sm bg-white">
+                <select name="location" id="filterLocation"
+                    class="w-full px-4 py-2 border border-charcoal/20 rounded-md bg-white text-sm">
+                
                     <option value="">All Locations</option>
-                    <option value="Rajkot">Rajkot</option>
-                    <option value="Ahmedabad">Ahmedabad</option>
-                    <option value="Surat">Surat</option>
-                    <option value="Vadodara">Vadodara</option>
+                    <option value="Rajkot" <?= $location === 'Rajkot' ? 'selected' : '' ?>>Rajkot</option>
+                    <option value="Ahmedabad" <?= $location === 'Ahmedabad' ? 'selected' : '' ?>>Ahmedabad</option>
+                    <option value="Surat" <?= $location === 'Surat' ? 'selected' : '' ?>>Surat</option>
+                    <option value="Vadodara" <?= $location === 'Vadodara' ? 'selected' : '' ?>>Vadodara</option>
                 </select>
             </div>
             <div class="flex space-x-2 w-full md:w-auto">
-                <button type="button" id="btnSearch" class="flex-1 md:flex-none px-4 py-2 bg-forest text-white text-sm font-medium rounded-md hover:bg-forest-dark transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-forest">
+                <button type="submit"
+                    class="px-4 py-2 bg-forest text-white text-sm font-medium rounded-md">
                     Search
                 </button>
-                <button type="button" id="btnClear" class="flex-1 md:flex-none px-4 py-2 bg-ivory-dark text-charcoal text-sm font-medium rounded-md hover:bg-gold/20 border border-charcoal/10 transition-colors focus:outline-none">
+
+                <a href="<?= e(strtok($_SERVER['REQUEST_URI'], '?')) ?>"
+                   class="px-4 py-2 bg-ivory-dark text-charcoal text-sm font-medium rounded-md border border-charcoal/10">
                     Clear
-                </button>
+                </a>
             </div>
         </div>
     </div>
+    </form>
 
     <div class="bg-white rounded-xl border border-charcoal/10 shadow-sm overflow-hidden mb-6">
         <div class="overflow-x-auto">
@@ -214,71 +163,28 @@ ob_start();
     </div>
 
     <!-- Pagination -->
-    <div class="flex items-center justify-between pt-2 pb-6">
-        <div class="flex flex-col sm:flex-row flex-wrap sm:items-center justify-between gap-4 w-full">
-            <div>
-                <p class="text-sm text-charcoal-light">
-                    Showing <span class="font-medium text-charcoal">1</span> to <span class="font-medium text-charcoal">8</span> of <span class="font-medium text-charcoal">86</span> results
-                </p>
-            </div>
-            <div>
-                <nav class="relative z-0 inline-flex flex-wrap rounded-md shadow-sm -space-x-px justify-center" aria-label="Pagination">
-                    <a href="#" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-charcoal/20 bg-white text-sm font-medium text-charcoal-light hover:bg-ivory transition-colors">
-                        <span class="sr-only">Previous</span>
-                        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                            <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
-                        </svg>
-                    </a>
-                    <a href="#" aria-current="page" class="z-10 bg-forest/5 border-forest text-forest relative inline-flex items-center px-4 py-2 border text-sm font-medium">
-                        1
-                    </a>
-                    <a href="#" class="bg-white border-charcoal/20 text-charcoal-light hover:bg-ivory relative inline-flex items-center px-4 py-2 border text-sm font-medium transition-colors">
-                        2
-                    </a>
-                    <a href="#" class="bg-white border-charcoal/20 text-charcoal-light hover:bg-ivory relative inline-flex items-center px-4 py-2 border text-sm font-medium transition-colors">
-                        3
-                    </a>
-                    <span class="relative inline-flex items-center px-4 py-2 border border-charcoal/20 bg-white text-sm font-medium text-charcoal-light">
-                        ...
-                    </span>
-                    <a href="#" class="bg-white border-charcoal/20 text-charcoal-light hover:bg-ivory relative inline-flex items-center px-4 py-2 border text-sm font-medium transition-colors">
-                        11
-                    </a>
-                    <a href="#" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-charcoal/20 bg-white text-sm font-medium text-charcoal-light hover:bg-ivory transition-colors">
-                        <span class="sr-only">Next</span>
-                        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-                        </svg>
-                    </a>
-                </nav>
-            </div>
+    <div class="flex items-center justify-between mt-4">
+        <div class="text-sm text-charcoal-light">
+            Showing <?= $startRecord ?> to <?= $endRecord ?> of <?= $totalRecords ?> NGOs
         </div>
-        <div class="flex items-center justify-between w-full sm:hidden mt-4">
-            <a href="#" class="relative inline-flex items-center px-4 py-2 border border-charcoal/20 text-sm font-medium rounded-md text-charcoal bg-white hover:bg-ivory">
-                Previous
-            </a>
-            <a href="#" class="ml-3 relative inline-flex items-center px-4 py-2 border border-charcoal/20 text-sm font-medium rounded-md text-charcoal bg-white hover:bg-ivory">
-                Next
-            </a>
+        <div class="flex space-x-1">
+            <?php if ($page > 1): ?>
+                <a href="?<?= http_build_query(array_merge($queryParams, ['page' => $page - 1])) ?>" class="px-3 py-1 bg-white border border-charcoal/20 rounded-md text-sm text-charcoal hover:bg-ivory transition-colors">Previous</a>
+            <?php endif; ?>
+
+            <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+                <a href="?<?= http_build_query(array_merge($queryParams, ['page' => $i])) ?>" class="px-3 py-1 border rounded-md text-sm <?= $i === $page ? 'bg-forest text-white' : 'bg-white border-charcoal/20 text-charcoal hover:bg-ivory transition-colors' ?>">
+                    <?= $i ?>
+                </a>
+            <?php endfor; ?>
+
+            <?php if ($page < $totalPages): ?>
+                <a href="?<?= http_build_query(array_merge($queryParams, ['page' => $page + 1])) ?>" class="px-3 py-1 bg-white border border-charcoal/20 rounded-md text-sm text-charcoal hover:bg-ivory transition-colors">Next</a>
+            <?php endif; ?>
         </div>
-    </div>
 </div>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const searchInput = document.getElementById('searchNGO');
-        const filterStatus = document.getElementById('filterStatus');
-        const filterLocation = document.getElementById('filterLocation');
-        const btnSearch = document.getElementById('btnSearch');
-        const btnClear = document.getElementById('btnClear');
-        const rows = document.querySelectorAll('.ngo-row');
-        const emptyState = document.getElementById('emptyState');
 
-        
-        
-        
-    });
-</script>
 
 <?php
 $content = ob_get_clean();

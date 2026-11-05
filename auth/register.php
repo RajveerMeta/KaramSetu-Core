@@ -16,7 +16,8 @@ ob_start();
                 <p class="text-charcoal-light">Create an account to start your journey.</p>
             </div>
             
-            <form id="registerForm" class="space-y-6 validation-form" action="#" method="POST" data-success-redirect="<?= baseUrl('auth/login.php') ?>" novalidate>
+            <form id="registerForm" class="space-y-6 validation-form" action="<?= baseUrl('Database/User/auth/register_form.php') ?>" method="POST" data-success-redirect="<?= baseUrl('auth/login.php') ?>" novalidate>
+                <input type="hidden" name="register" value="1">
                 
                 <div class="space-y-5">
                     <div class="relative pb-1">
@@ -74,7 +75,7 @@ ob_start();
                 </div>
 
                 <div class="pt-2">
-                    <button type="submit" 
+                    <button type="submit"  name="register" 
                         class="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-full text-white bg-forest hover:bg-forest-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-forest transition-all shadow-md hover:shadow-lg">
                         Create Account
                     </button>
@@ -94,6 +95,14 @@ ob_start();
 </div>
 
 
+
+<script>
+$(document).ready(function () {
+    $('#registerForm').on('validationSuccess', function () {
+        HTMLFormElement.prototype.submit.call(this);
+    });
+});
+</script>
 
 <?php
 $content = ob_get_clean();

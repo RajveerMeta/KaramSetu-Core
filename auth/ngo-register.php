@@ -42,8 +42,7 @@ ob_start();
 
         <!-- Application Form -->
         <div id="ngoApplicationFormContainer" class="bg-white rounded-3xl shadow-sm border border-gold/20 overflow-hidden">
-        <form id="ngoApplicationForm" action="#" method="POST" class="p-6 md:p-10 space-y-12 validation-form" novalidate
->                
+        <form id="ngoApplicationForm" action="<?= baseUrl('Database/User/auth/ngo-register_form.php') ?>" enctype="multipart/form-data" method="POST" class="p-6 md:p-10 space-y-12 validation-form" novalidate>                
                 
                 <!-- Section 01: Organization Details -->
                 <section>
@@ -343,14 +342,15 @@ ob_start();
                     <button type="button" class="w-full sm:w-auto px-6 py-3 text-sm font-bold text-forest bg-ivory border border-gold/30 hover:bg-gold/10 hover:border-gold rounded-full transition-colors">
                         Save as Draft
                     </button>
-                    <button type="submit" class="w-full sm:w-auto px-10 py-3 text-sm font-bold text-white bg-forest hover:bg-forest-dark shadow-md hover:shadow-lg rounded-full transition-all">
+                    <button type="submit" name="register_ngo"
+                    class="w-full sm:w-auto px-10 py-3 text-sm font-bold text-white bg-forest hover:bg-forest-dark shadow-md hover:shadow-lg rounded-full transition-all">
                         Submit Application
                     </button>
                 </div>
             
             </form>
             
-            <!-- Success State (Hidden by default) -->
+            <!-- Success Stat   e (Hidden by default) -->
             <div id="successState" style="display: none;" class="text-center py-12 px-6">
                 <div class="w-20 h-20 bg-forest/10 rounded-full flex items-center justify-center mx-auto mb-6">
                     <svg class="w-10 h-10 text-forest" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -363,12 +363,12 @@ ob_start();
                 <div class="bg-ivory/50 border border-charcoal/10 rounded-2xl p-6 max-w-md mx-auto mb-8 text-left space-y-4">
                     <div class="flex justify-between items-center border-b border-charcoal/10 pb-4">
                         <span class="text-charcoal-light font-medium text-sm">Application ID</span>
-                        <span class="font-bold text-forest text-lg">NGO-001</span>
+                       <span class="font-bold text-forest text-lg">NGO-<?= $ngoId ?></span>
                     </div>
                     <div class="flex justify-between items-center pb-2">
                         <span class="text-charcoal-light font-medium text-sm">Status</span>
                         <span class="inline-flex items-center px-3 py-1 rounded-full bg-gold/20 text-forest text-xs font-bold uppercase tracking-wider">Pending Review</span>
-                    </div>
+                                        </div>
                 </div>
                 
                 <p class="text-sm text-charcoal/80 mb-10 max-w-lg mx-auto leading-relaxed">Our administration team will review your organization details and documents. We will contact you via email once the initial verification is complete.</p>
