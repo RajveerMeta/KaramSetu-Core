@@ -47,6 +47,16 @@ if (!$users) {
     exit;
 }
 
+/* GET ACCEPTED CONTRIBUTION TYPES */
+
+$accepted_types = [];
+$typesQuery = mysqli_query($con, "SELECT contribution_type FROM cause_accepted_types WHERE cause_id = $id");
+if ($typesQuery) {
+    while ($tRow = mysqli_fetch_assoc($typesQuery)) {
+        $accepted_types[] = $tRow['contribution_type'];
+    }
+}
+
 /* MESSAGES */
 
 $successMsg = '';
@@ -63,14 +73,19 @@ if (isset($_POST['update_cause'])) {
     $long_desc = $_POST['long_desc'];
     $start_date = $_POST['start_date'];
     $end_date = $_POST['end_date'];
+    $accepted_types = isset($_POST['accepted_types']) && is_array($_POST['accepted_types']) ? $_POST['accepted_types'] : [];
 
     if (
         empty($title) ||
         empty($category) ||
         empty($target) ||
-        empty($short_desc)
+        empty($short_desc) ||
+        empty($start_date) ||
+        empty($end_date)
     ) {
         $errorMsg = "Please fill all required fields.";
+    } elseif (empty($accepted_types)) {
+        $errorMsg = "Please select at least one accepted contribution type.";
     } elseif ($target <= 0) {
         $errorMsg = "Target amount must be greater than zero.";
     } elseif (
@@ -81,34 +96,46 @@ if (isset($_POST['update_cause'])) {
         $errorMsg = "End date cannot be before start date.";
     } else {
 
-        if (empty($start_date)) {
-            $start_date = "NULL";
-        } else {
-            $start_date = "'" . mysqli_real_escape_string($con, $start_date) . "'";
-        }
-
-        if (empty($end_date)) {
-            $end_date = "NULL";
-        } else {
-            $end_date = "'" . mysqli_real_escape_string($con, $end_date) . "'";
-        }
+        $title_esc = mysqli_real_escape_string($con, trim($title));
+        $category_esc = mysqli_real_escape_string($con, trim($category));
+        $target_val = (float) $target;
+        $short_desc_esc = mysqli_real_escape_string($con, trim($short_desc));
+        $long_desc_esc = mysqli_real_escape_string($con, trim($long_desc));
+        $start_date_esc = mysqli_real_escape_string($con, trim($start_date));
+        $end_date_esc = mysqli_real_escape_string($con, trim($end_date));
 
         $updateQuery = "UPDATE causes SET
-                        title = '$title',
-                        category = '$category',
-                        target_amount = $target,
-                        short_description = '$short_desc',
-                        detailed_description = '$long_desc',
-                        start_date = $start_date,
-                        end_date = $end_date
+                        title = '$title_esc',
+                        category = '$category_esc',
+                        target_amount = $target_val,
+                        short_description = '$short_desc_esc',
+                        detailed_description = '$long_desc_esc',
+                        start_date = '$start_date_esc',
+                        end_date = '$end_date_esc'
                         WHERE id = $id
                         AND ngo_id = $ngo_id";
 
         if (mysqli_query($con, $updateQuery)) {
 
+            /* UPDATE ACCEPTED CONTRIBUTION TYPES */
+            mysqli_query($con, "DELETE FROM cause_accepted_types WHERE cause_id = $id");
+            foreach ($accepted_types as $type) {
+                $type = trim($type);
+                if (in_array($type, ['money', 'food', 'clothes', 'items'])) {
+                    mysqli_query($con, "INSERT INTO cause_accepted_types (cause_id, contribution_type) VALUES ($id, '$type')");
+                }
+            }
+
             $successMsg = "Cause updated successfully!";
 
             /* REFRESH CAUSE DETAILS */
+            $accepted_types = [];
+            $typesQuery = mysqli_query($con, "SELECT contribution_type FROM cause_accepted_types WHERE cause_id = $id");
+            if ($typesQuery) {
+                while ($tRow = mysqli_fetch_assoc($typesQuery)) {
+                    $accepted_types[] = $tRow['contribution_type'];
+                }
+            }
 
             $query = "SELECT * FROM causes
                       WHERE id = $id AND ngo_id = $ngo_id";
@@ -249,6 +276,32 @@ ob_start();
                             data-validate="required numeric">
                     </div>
 
+                    <!-- ACCEPTED CONTRIBUTION TYPES -->
+
+                    <div>
+                        <label class="block text-sm font-bold text-charcoal mb-2">
+                            Accepted Contribution Types <span class="text-red-500">*</span>
+                        </label>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <label class="flex items-center gap-2 p-3 border border-charcoal/20 rounded-xl bg-ivory/30 hover:bg-white cursor-pointer transition-colors">
+                                <input type="checkbox" name="accepted_types[]" value="money" <?= in_array('money', $accepted_types) ? 'checked' : '' ?> class="h-4 w-4 text-forest rounded border-charcoal/30 accent-forest">
+                                <span class="text-sm font-medium text-charcoal">Money</span>
+                            </label>
+                            <label class="flex items-center gap-2 p-3 border border-charcoal/20 rounded-xl bg-ivory/30 hover:bg-white cursor-pointer transition-colors">
+                                <input type="checkbox" name="accepted_types[]" value="food" <?= in_array('food', $accepted_types) ? 'checked' : '' ?> class="h-4 w-4 text-forest rounded border-charcoal/30 accent-forest">
+                                <span class="text-sm font-medium text-charcoal">Food</span>
+                            </label>
+                            <label class="flex items-center gap-2 p-3 border border-charcoal/20 rounded-xl bg-ivory/30 hover:bg-white cursor-pointer transition-colors">
+                                <input type="checkbox" name="accepted_types[]" value="clothes" <?= in_array('clothes', $accepted_types) ? 'checked' : '' ?> class="h-4 w-4 text-forest rounded border-charcoal/30 accent-forest">
+                                <span class="text-sm font-medium text-charcoal">Clothes</span>
+                            </label>
+                            <label class="flex items-center gap-2 p-3 border border-charcoal/20 rounded-xl bg-ivory/30 hover:bg-white cursor-pointer transition-colors">
+                                <input type="checkbox" name="accepted_types[]" value="items" <?= in_array('items', $accepted_types) ? 'checked' : '' ?> class="h-4 w-4 text-forest rounded border-charcoal/30 accent-forest">
+                                <span class="text-sm font-medium text-charcoal">Useful Items</span>
+                            </label>
+                        </div>
+                    </div>
+
                     <!-- SHORT DESCRIPTION -->
 
                     <div>
@@ -285,27 +338,27 @@ ob_start();
 
                         <div>
                             <label class="block text-sm font-bold text-charcoal mb-1">
-                                Start Date
+                                Start Date <span class="text-red-500">*</span>
                             </label>
 
                             <input
                                 type="date"
                                 name="start_date"
                                 id="start_date"
-                                value="<?= $users['start_date'] ?>"
+                                value="<?= $users['start_date'] ?>" required
                                 class="w-full px-4 py-3 border border-charcoal/20 rounded-xl text-charcoal focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent transition-all bg-ivory/30 focus:bg-white">
                         </div>
 
                         <div>
                             <label class="block text-sm font-bold text-charcoal mb-1">
-                                End Date
+                                End Date <span class="text-red-500">*</span>
                             </label>
 
                             <input
                                 type="date"
                                 name="end_date"
                                 id="end_date"
-                                value="<?= $users['end_date'] ?>"
+                                value="<?= $users['end_date'] ?>" required
                                 class="w-full px-4 py-3 border border-charcoal/20 rounded-xl text-charcoal focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent transition-all bg-ivory/30 focus:bg-white">
                         </div>
 

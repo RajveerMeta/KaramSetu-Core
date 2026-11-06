@@ -1,21 +1,102 @@
 <?php
-$ngos = require __DIR__ . '/../data/ngos.php';
-$id = $_GET['ngo_id'] ?? 1; 
+require_once __DIR__ . '/../Database/db_config.php';
+
+$cause_id = isset($_GET['id']) ? (int) $_GET['id'] : (isset($_GET['cause_id']) ? (int) $_GET['cause_id'] : 0);
+$ngo_id = isset($_GET['ngo_id']) ? (int) $_GET['ngo_id'] : 0;
+
+$cause = null;
 $ngo = null;
-foreach ($ngos as $n) {
-    if ($n['id'] == $id) {
-        $ngo = $n;
-        break;
+
+if ($cause_id > 0) {
+    $cause_query = mysqli_query($con, "SELECT c.*, n.id AS ngo_id, n.name AS ngo_name, n.primary_cause AS ngo_category, n.city AS ngo_city, n.state AS ngo_state, n.description AS ngo_description, n.verification_status FROM causes c INNER JOIN ngos n ON n.id = c.ngo_id WHERE c.id = $cause_id LIMIT 1");
+    if ($cause_query && mysqli_num_rows($cause_query) > 0) {
+        $cause = mysqli_fetch_assoc($cause_query);
     }
 }
-if (!$ngo) {
-    $ngo = $ngos[0];
+
+if (!$cause && $ngo_id > 0) {
+    $cause_query = mysqli_query($con, "SELECT c.*, n.id AS ngo_id, n.name AS ngo_name, n.primary_cause AS ngo_category, n.city AS ngo_city, n.state AS ngo_state, n.description AS ngo_description, n.verification_status FROM causes c INNER JOIN ngos n ON n.id = c.ngo_id WHERE c.ngo_id = $ngo_id ORDER BY c.id ASC LIMIT 1");
+    if ($cause_query && mysqli_num_rows($cause_query) > 0) {
+        $cause = mysqli_fetch_assoc($cause_query);
+    }
+}
+
+if (!$cause) {
+    $cause_query = mysqli_query($con, "SELECT c.*, n.id AS ngo_id, n.name AS ngo_name, n.primary_cause AS ngo_category, n.city AS ngo_city, n.state AS ngo_state, n.description AS ngo_description, n.verification_status FROM causes c INNER JOIN ngos n ON n.id = c.ngo_id ORDER BY (c.status = 'active') DESC, c.id ASC LIMIT 1");
+    if ($cause_query && mysqli_num_rows($cause_query) > 0) {
+        $cause = mysqli_fetch_assoc($cause_query);
+    }
+}
+
+if ($cause) {
+    $cause_id = (int) $cause['id'];
+    $ngo = [
+        'id' => $cause['ngo_id'],
+        'name' => $cause['ngo_name'],
+        'category' => $cause['ngo_category'],
+        'city' => $cause['ngo_city'],
+        'state' => $cause['ngo_state'],
+        'description' => $cause['ngo_description'],
+        'verification_status' => $cause['verification_status']
+    ];
+} else {
+    $cause = [
+        'id' => 0,
+        'title' => 'Community Initiative',
+        'category' => 'Community Support',
+        'target_amount' => 500000,
+        'short_description' => 'Help provide essential resources and support to those who need it most in our communities.',
+        'detailed_description' => 'Your contribution directly fuels grassroots efforts. We believe that collective action forms the backbone of sustainable community development.',
+        'cause_image' => null,
+        'status' => 'active'
+    ];
+    $ngo = [
+        'id' => 1,
+        'name' => 'KarmaSetu Partner NGO',
+        'category' => 'Community Support',
+        'city' => 'Vadodara',
+        'state' => 'Gujarat',
+        'description' => 'A dedicated non-profit organization working to create positive community impact through meaningful initiatives.',
+        'verification_status' => 'approved'
+    ];
+}
+
+$accepted_types = [];
+if ($cause_id > 0) {
+    $types_query = mysqli_query($con, "SELECT contribution_type FROM cause_accepted_types WHERE cause_id = $cause_id");
+    if ($types_query) {
+        while ($t_row = mysqli_fetch_assoc($types_query)) {
+            $accepted_types[] = strtolower(trim($t_row['contribution_type']));
+        }
+    }
+}
+
+$raised_amount = 0.00;
+if ($cause_id > 0) {
+    $raised_query = mysqli_query($con, "SELECT COALESCE(SUM(monetary_amount), 0) AS total_raised FROM contributions WHERE cause_id = $cause_id AND (payment_status = 'completed' OR payment_status = 'not_applicable' OR payment_status = '')");
+    if ($raised_query) {
+        $r_row = mysqli_fetch_assoc($raised_query);
+        $raised_amount = (float) $r_row['total_raised'];
+    }
+}
+
+$target_amount = isset($cause['target_amount']) ? (float) $cause['target_amount'] : 0.00;
+$progress_percentage = 0;
+if ($target_amount > 0) {
+    $progress_percentage = (int) round(($raised_amount / $target_amount) * 100);
+}
+$remaining_amount = max(0, $target_amount - $raised_amount);
+
+$cause_image_url = 'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80';
+if (!empty($cause['cause_image'])) {
+    $img_path = $cause['cause_image'];
+    if (strpos($img_path, 'uploads/') === 0) {
+        $cause_image_url = baseUrl($img_path);
+    } else {
+        $cause_image_url = baseUrl('uploads/causes/' . basename($img_path));
+    }
 }
 ?>
-
-
-
-
 
     <section class="bg-ivory pt-10 pb-8 border-b border-gold/10">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center max-w-3xl">
@@ -73,12 +154,12 @@ if (!$ngo) {
                             
                             <div class="flex flex-col md:flex-row justify-between border-b border-gold/20 pb-4">
                                 <span class="text-charcoal-light font-medium">Supporting</span>
-                                <span class="text-charcoal font-bold text-right"><?= e($ngo['category']) ?></span>
+                                <span class="text-charcoal font-bold text-right"><?= $cause['title'] ?></span>
                             </div>
                             
                             <div class="flex flex-col md:flex-row justify-between pb-2">
                                 <span class="text-charcoal-light font-medium">NGO</span>
-                                <span class="text-charcoal font-bold text-right"><?= e($ngo['name']) ?></span>
+                                <span class="text-charcoal font-bold text-right"><?= $ngo['name'] ?></span>
                             </div>
                         </div>
                         
@@ -93,50 +174,50 @@ if (!$ngo) {
                 <div class="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-12 lg:gap-16 items-start">
                     
                     <!-- LEFT COLUMN -->
-                    <div class="w-full space-y-12">
+                    <div class="w-full space-y-12 min-w-0">
                         
                         <!-- 04. CAUSE INFORMATION -->
                         <div class="bg-white rounded-3xl border border-gold/20 shadow-sm overflow-hidden">
                             <div class="p-8">
-                                <span class="text-xs font-bold text-gold uppercase tracking-wider mb-2 block">Supporting</span>
-                                <h2 class="text-3xl md:text-4xl font-serif text-forest mb-6"><?= e($ngo['category']) ?></h2>
+                                <span class="text-xs font-bold text-gold uppercase tracking-wider mb-2 block"><?= $cause['category'] ?></span>
+                                <h2 class="text-3xl md:text-4xl font-serif text-forest mb-6 break-words" style="word-break: break-word; overflow-wrap: anywhere;"><?= $cause['title'] ?></h2>
                                 
                                 <div class="w-full aspect-[16/9] md:aspect-[21/9] lg:aspect-[16/9] rounded-2xl overflow-hidden bg-forest/5 relative mb-8">
-                                    <img src="https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80" alt="Supporting <?= e($ngo['category']) ?>" class="w-full h-full object-cover">
+                                    <img src="<?= $cause_image_url ?>" alt="<?= $cause['title'] ?>" class="w-full h-full object-cover">
                                     <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none"></div>
                                 </div>
                                 
-                                <div class="prose prose-lg text-charcoal-light font-light leading-relaxed max-w-none">
-                                    <p class="text-xl text-charcoal font-medium border-l-4 border-gold pl-4 py-1 mb-6">
-                                        Help provide essential resources and support to those who need it most in our communities.
+                                <div class="prose prose-lg text-charcoal-light font-light leading-relaxed max-w-none break-words" style="word-break: break-word; overflow-wrap: anywhere;">
+                                    <p class="text-xl text-charcoal font-medium border-l-4 border-gold pl-4 py-1 mb-6 break-words" style="word-break: break-word; overflow-wrap: anywhere;">
+                                        <?= !empty($cause['short_description']) ? $cause['short_description'] : 'Help provide essential resources and support to those who need it most in our communities.' ?>
                                     </p>
-                                    <p>
-                                        Your contribution to <?= e($ngo['category']) ?> directly fuels grassroots efforts. <?= e($ngo['description']) ?> We believe that collective action forms the backbone of sustainable community development.
+                                    <p class="break-words" style="word-break: break-word; overflow-wrap: anywhere;">
+                                        <?= !empty($cause['detailed_description']) ? nl2br($cause['detailed_description']) : 'Your contribution directly fuels grassroots efforts. We believe that collective action forms the backbone of sustainable community development.' ?>
                                     </p>
                                 </div>
                             </div>
                         </div>
                         
                         <!-- 05. NGO SECTION -->
-                        <div class="bg-white p-8 rounded-3xl border border-gold/20 shadow-sm">
+                        <div class="bg-white p-8 rounded-3xl border border-gold/20 shadow-sm min-w-0">
                             <h3 class="text-sm font-bold text-gold uppercase tracking-wider mb-6">Organized By</h3>
                             
                             <div class="flex flex-col sm:flex-row items-start sm:items-center gap-6 mb-6">
                                 <div class="w-16 h-16 bg-ivory border border-gold/30 rounded-2xl flex flex-col md:flex-row items-center justify-center shrink-0 shadow-sm text-3xl md:text-4xl font-serif text-forest">
-                                    <?= e(substr($ngo['name'], 0, 1)) ?>
+                                    <?= substr($ngo['name'] ?? '', 0, 1) ?>
                                 </div>
-                                <div class="flex-1">
+                                <div class="flex-1 min-w-0">
                                     <div class="flex flex-col md:flex-row items-center gap-2 mb-1">
-                                        <h4 class="font-serif text-forest text-xl"><?= e($ngo['name']) ?></h4>
-                                        <?php if($ngo['verified']): ?>
+                                        <h4 class="font-serif text-forest text-xl break-words" style="word-break: break-word; overflow-wrap: anywhere;"><?= $ngo['name'] ?></h4>
+                                        <?php if (!empty($ngo['verification_status']) && $ngo['verification_status'] === 'approved'): ?>
                                             <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
                                         <?php endif; ?>
                                     </div>
                                     <div class="flex flex-col md:flex-row items-center gap-2 text-sm text-charcoal-light mb-2">
-                                        <svg class="w-4 h-4 text-gold" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path></svg>
-                                        <span><?= e($ngo['location']) ?></span>
+                                        <svg class="w-4 h-4 text-gold shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path></svg>
+                                        <span><?= (!empty($ngo['city']) && !empty($ngo['state'])) ? $ngo['city'] . ', ' . $ngo['state'] : ($ngo['city'] ?? ($ngo['state'] ?? 'India')) ?></span>
                                     </div>
-                                    <p class="text-sm text-charcoal-light leading-relaxed">A dedicated non-profit organization working to create positive community impact through meaningful initiatives.</p>
+                                    <p class="text-sm text-charcoal-light leading-relaxed break-words" style="word-break: break-word; overflow-wrap: anywhere;"><?= !empty($ngo['description']) ? $ngo['description'] : 'A dedicated non-profit organization working to create positive community impact through meaningful initiatives.' ?></p>
                                 </div>
                             </div>
                             
@@ -147,40 +228,40 @@ if (!$ngo) {
                         </div>
                         
                         <!-- 06. FUNDRAISING PROGRESS -->
-                        <div class="bg-white p-8 rounded-3xl border border-gold/20 shadow-sm">
+                        <div class="bg-white p-8 rounded-3xl border border-gold/20 shadow-sm min-w-0">
                             <h3 class="text-2xl md:text-4xl font-serif text-forest mb-8">Fundraising Progress</h3>
                             
                             <div class="flex flex-col md:flex-row flex-wrap justify-between items-end mb-4 gap-4">
                                 <div>
-                                    <span class="text-3xl md:text-4xl font-serif text-forest block mb-1">₹3,75,000</span>
+                                    <span class="text-3xl md:text-4xl font-serif text-forest block mb-1">₹<?= number_format($raised_amount) ?></span>
                                     <span class="text-xs font-bold text-gold uppercase tracking-wider">Raised</span>
                                 </div>
                                 <div class="text-center hidden sm:block">
-                                    <span class="text-2xl md:text-4xl md:text-3xl font-serif text-forest block mb-1">75%</span>
+                                    <span class="text-2xl md:text-4xl md:text-3xl font-serif text-forest block mb-1"><?= $progress_percentage ?>%</span>
                                     <span class="text-xs font-bold text-gold uppercase tracking-wider">Funded</span>
                                 </div>
                                 <div class="text-right">
-                                    <span class="text-xl md:text-2xl font-serif text-charcoal-light block mb-1">₹5,00,000</span>
+                                    <span class="text-xl md:text-2xl font-serif text-charcoal-light block mb-1">₹<?= number_format($target_amount) ?></span>
                                     <span class="text-xs font-bold text-charcoal-light uppercase tracking-wider">Goal</span>
                                 </div>
                             </div>
                             
                             <div class="w-full bg-ivory rounded-full h-4 mb-4 border border-gold/20 overflow-hidden shadow-inner">
-                                <div class="bg-forest h-full rounded-full relative" style="width: 75%">
+                                <div class="bg-forest h-full rounded-full relative" style="width: <?= min(100, $progress_percentage) ?>%">
                                     <div class="absolute inset-0 bg-white/20 w-full h-full" style="background-image: linear-gradient(45deg, rgba(255,255,255,0.15) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0.15) 75%, transparent 75%, transparent); background-size: 1rem 1rem;"></div>
                                 </div>
                             </div>
                             
                             <div class="flex flex-col md:flex-row justify-between items-center text-sm font-medium text-charcoal-light">
-                                <span class="sm:hidden">75% Funded</span>
-                                <span class="ml-auto">₹1,25,000 remaining</span>
+                                <span class="sm:hidden"><?= $progress_percentage ?>% Funded</span>
+                                <span class="ml-auto">₹<?= number_format($remaining_amount) ?> remaining</span>
                             </div>
                         </div>
                         
                     </div>
                     
                     <!-- RIGHT COLUMN: FORM -->
-                    <div class="w-full">
+                    <div class="w-full min-w-0">
                         <div class="bg-white p-6 md:p-8 rounded-3xl border border-gold/20 shadow-lg lg:sticky lg:top-24 z-10">
                             <div class="mb-8">
                                 <h2 class="text-3xl md:text-4xl font-serif text-forest mb-2">Make a Contribution</h2>
@@ -191,6 +272,7 @@ if (!$ngo) {
                             <div class="mb-8">
                                 <label class="block text-sm font-bold text-charcoal uppercase tracking-wider mb-4">What would you like to contribute?</label>
                                 <div class="grid grid-cols-2 gap-3">
+                                    <?php if (empty($accepted_types) || in_array('money', $accepted_types)): ?>
                                     <button
                                         type="button"
                                         class="contrib-type-btn py-3 px-4 border rounded-xl font-bold transition-all text-sm capitalize flex flex-col md:flex-row items-center justify-center gap-2 relative overflow-hidden"
@@ -199,7 +281,9 @@ if (!$ngo) {
                                         <span>Money</span>
                                         <div class="contrib-indicator absolute top-1 right-1 w-2 h-2 rounded-full bg-forest" style="display:none;"></div>
                                     </button>
+                                    <?php endif; ?>
                                     
+                                    <?php if (empty($accepted_types) || in_array('food', $accepted_types)): ?>
                                     <button
                                         type="button"
                                         class="contrib-type-btn py-3 px-4 border rounded-xl font-bold transition-all text-sm capitalize flex flex-col md:flex-row items-center justify-center gap-2 relative overflow-hidden"
@@ -208,7 +292,9 @@ if (!$ngo) {
                                         <span>Food</span>
                                         <div class="contrib-indicator absolute top-1 right-1 w-2 h-2 rounded-full bg-forest" style="display:none;"></div>
                                     </button>
+                                    <?php endif; ?>
                                     
+                                    <?php if (empty($accepted_types) || in_array('clothes', $accepted_types)): ?>
                                     <button
                                         type="button"
                                         class="contrib-type-btn py-3 px-4 border rounded-xl font-bold transition-all text-sm capitalize flex flex-col md:flex-row items-center justify-center gap-2 relative overflow-hidden"
@@ -217,7 +303,9 @@ if (!$ngo) {
                                         <span>Clothes</span>
                                         <div class="contrib-indicator absolute top-1 right-1 w-2 h-2 rounded-full bg-forest" style="display:none;"></div>
                                     </button>
+                                    <?php endif; ?>
                                     
+                                    <?php if (empty($accepted_types) || in_array('items', $accepted_types)): ?>
                                     <button
                                         type="button"
                                         class="contrib-type-btn py-3 px-4 border rounded-xl font-bold transition-all text-sm capitalize flex flex-col md:flex-row items-center justify-center gap-2 relative overflow-hidden"
@@ -226,6 +314,7 @@ if (!$ngo) {
                                         <span>Useful Items</span>
                                         <div class="contrib-indicator absolute top-1 right-1 w-2 h-2 rounded-full bg-forest" style="display:none;"></div>
                                     </button>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                             
@@ -240,8 +329,8 @@ if (!$ngo) {
                                                 <button 
                                                     type="button"
                                                     class="contrib-preset-btn py-3 border rounded-xl font-bold transition-all text-sm bg-white text-forest border-gold/30 hover:border-forest hover:bg-forest/5" 
-                                                    data-amount="<?= e($preset) ?>"
-                                                >₹<?= e($preset) ?></button>
+                                                    data-amount="<?= $preset ?>"
+                                                >₹<?= $preset ?></button>
                                             <?php endforeach; ?>
                                         </div>
                                         <div>
@@ -448,7 +537,7 @@ if (!$ngo) {
                                     
                                     <div class="flex flex-col md:flex-row justify-between items-center mt-3 pt-3 border-t border-forest/10">
                                         <span class="text-sm text-charcoal-light font-medium">Supporting</span>
-                                        <span class="text-sm font-bold text-charcoal text-right"><?= e($ngo['name']) ?></span>
+                                        <span class="text-sm font-bold text-charcoal text-right"><?= $ngo['name'] ?></span>
                                     </div>
                                 </div>
                                 

@@ -41,7 +41,13 @@ if ($ngo_id > 0) {
     $causeQuery = mysqli_query(
         $con,
         "SELECT c.*,
-                0 AS raised_amount,
+                COALESCE((
+                    SELECT SUM(co.monetary_amount)
+                    FROM contributions co
+                    WHERE co.cause_id = c.id
+                      AND co.contribution_type = 'money'
+                      AND co.payment_status = 'completed'
+                ), 0) AS raised_amount,
                 GROUP_CONCAT(
                     DISTINCT cat.contribution_type
                     ORDER BY cat.contribution_type
@@ -142,7 +148,7 @@ ob_start();
 
                     $statusClasses = [
                         'active' => 'bg-forest/10 text-forest',
-                        'completed' => 'bg-blue-500 text-blue-800',
+                        'completed' => 'bg-blue-100 text-blue-800',
                         'suspended' => 'bg-red-100 text-red-800'
                     ];
 
@@ -178,7 +184,7 @@ ob_start();
                                         <span class="text-xs text-charcoal-light font-normal">raised</span>
                                     </span>
 
-                                    <span class="text-x font-bold text-charcoal">
+                                    <span class="text-xs font-bold text-charcoal">
                                         Goal: ₹<?= number_format($target, 2) ?>
                                     </span>
                                 </div>
@@ -188,10 +194,23 @@ ob_start();
                                          style="width: <?= $progress ?>%"></div>
                                 </div>
 
-                                <p class="text-x font-bold text-forest text-right mt-1">
+                                <p class="text-xs font-bold text-forest text-right mt-1">
                                     <?= $progress ?>%
                                 </p>
                             </div>
+
+                            <?php if (!empty($cause['accepted_types'])): ?>
+                                <div class="mb-3">
+                                    <span class="block text-[10px] font-bold text-charcoal-light uppercase tracking-wider mb-1.5">Accepts</span>
+                                    <div class="flex flex-wrap gap-1.5">
+                                        <?php foreach (explode(', ', $cause['accepted_types']) as $atype): ?>
+                                            <span class="bg-ivory border border-gold/30 text-charcoal text-[10px] px-2 py-0.5 rounded font-medium capitalize">
+                                                <?= htmlspecialchars($atype == 'items' ? 'Useful Items' : $atype) ?>
+                                            </span>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
                         </div>
 
                         <div class="flex flex-wrap gap-3 mt-4 pt-4 border-t border-charcoal/10">

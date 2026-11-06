@@ -9,8 +9,7 @@
     'status' => 'active' // active, urgent, nearly-complete, completed
  */ ?>
 
-<div class="bg-white rounded-2xl overflow-hidden border border-gold/20 shadow-sm hover:shadow-lg transition-all flex flex-col h-full group cause-card-item" data-accepts="<?= e(htmlspecialchars(json_encode($accepts))) ?>" data-location="<?= e(strtolower($location)) ?>" data-title="<?= e(htmlspecialchars(strtolower($title))) ?>" data-needtext="<?= e(htmlspecialchars(strtolower($needText))) ?>" data-status="<?= e($status) ?>" data-rand="<?= e(rand(1, 10)) ?>" 
-    class="cause-card-item cause-card-wrapper" data-accepts="<?= e(htmlspecialchars(json_encode($accepts))) ?>" data-location="<?= e(strtolower($location)) ?>" data-title="<?= e(htmlspecialchars(strtolower($title))) ?>" data-needtext="<?= e(htmlspecialchars(strtolower($needText))) ?>" data-status="<?= e($status) ?>" data-rand="<?= e(rand(1, 10)) ?>">
+<div class="bg-white rounded-2xl overflow-hidden border border-gold/20 shadow-sm hover:shadow-lg transition-all flex flex-col h-full group cause-card-item cause-card-wrapper" data-accepts="<?= htmlspecialchars(json_encode($accepts)) ?>" data-location="<?= strtolower($location) ?>" data-title="<?= htmlspecialchars(strtolower($title)) ?>" data-needtext="<?= htmlspecialchars(strtolower($needText)) ?>" data-status="<?= $status ?>">
     
     <!-- Header -->
     <div class="p-6 border-b border-gold/10 relative overflow-hidden">
@@ -35,11 +34,11 @@
             <?php endif; ?>
         </div>
 
-        <h3 class="text-xl font-serif text-forest mb-2 line-clamp-2 group-hover:text-gold transition-colors"><?= e($title) ?></h3>
+        <h3 class="text-xl font-serif text-forest mb-2 line-clamp-2 group-hover:text-gold transition-colors"><?= $title ?></h3>
         
         <p class="text-sm text-charcoal-light flex items-center">
             <svg class="w-4 h-4 mr-1.5 text-gold" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-            <?= e($location) ?>
+            <?= $location ?>
         </p>
 
         <!-- Subtle bg pattern on hover -->
@@ -53,17 +52,17 @@
         
         <div class="mb-6 flex-1">
             <span class="block text-xs font-bold text-charcoal uppercase tracking-wider mb-1">Need</span>
-            <p class="text-charcoal-light text-sm font-medium"><?= e($needText) ?></p>
+            <p class="text-charcoal-light text-sm font-medium"><?= $needText ?></p>
         </div>
 
         <!-- Progress -->
         <div class="mb-6">
             <div class="flex justify-between text-xs font-bold mb-2">
                 <span class="text-forest uppercase tracking-wider">Progress</span>
-                <span class="text-charcoal"><?= e($progress) ?>%</span>
+                <span class="text-charcoal"><?= $progress ?>%</span>
             </div>
             <div class="w-full bg-ivory-dark rounded-full h-1.5">
-                <div class="bg-gold h-1.5 rounded-full" style="width: <?= e($progress) ?>%"></div>
+                <div class="bg-gold h-1.5 rounded-full" style="width: <?= $progress ?>%"></div>
             </div>
         </div>
 
@@ -73,7 +72,7 @@
             <div class="flex flex-wrap gap-1.5">
                 <?php foreach($accepts as $type): ?>
                     <span class="bg-ivory border border-gold/30 text-charcoal text-[10px] px-2 py-1 rounded font-medium capitalize">
-                        <?= e($type == 'items' ? 'Useful Items' : $type) ?>
+                        <?= $type == 'items' ? 'Useful Items' : $type ?>
                     </span>
                 <?php endforeach; ?>
             </div>
@@ -82,7 +81,7 @@
         <!-- Action -->
         <div class="mt-auto pt-4 border-t border-gold/10">
             <a href="<?= baseUrl('?page=contribute&id=' . e($id)) ?>" class="w-full bg-forest/5 text-forest border border-forest/20 hover:bg-forest hover:text-ivory px-4 py-2.5 rounded-xl text-sm font-bold transition-all flex justify-between items-center group/btn">
-                <span><?= e($ctaText) ?></span>
+                <span><?= $ctaText ?></span>
                 <svg class="w-4 h-4 transform group-hover/btn:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
             </a>
         </div>

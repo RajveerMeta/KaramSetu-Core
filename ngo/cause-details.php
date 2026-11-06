@@ -1,4 +1,3 @@
-
 <?php
 require_once __DIR__ . '/../includes/functions.php';
 include __DIR__ . '/../Database/db_config.php';
@@ -7,13 +6,20 @@ ob_start();
 
 $ngoId = 0;
 $cause = null;
+$acceptedTypes = [];
 $recentContributions = [];
 
 $totalRaised = 0;
 $totalDonors = 0;
+$totalContributions = 0;
+$foodCount = 0;
+$clothesCount = 0;
+$itemsCount = 0;
+
 $fundingGoal = 0;
 $progress = 0;
 $daysRemaining = 0;
+$isEnded = false;
 
 $pageError = '';
 
@@ -32,7 +38,7 @@ if (!isset($_SESSION['user_id'])) {
     $ngo = mysqli_fetch_assoc($ngoResult);
 
     if ($ngo) {
-        $ngoId = $ngo['id'];
+        $ngoId = (int)$ngo['id'];
     } else {
         $pageError = 'NGO account not found.';
     }
@@ -52,7 +58,8 @@ if ($pageError == '' && $ngoId > 0) {
 
     $query = "SELECT * FROM causes
               WHERE id = $causeId
-              AND ngo_id = $ngoId";
+              AND ngo_id = $ngoId
+              LIMIT 1";
 
     $result = mysqli_query($con, $query);
 
@@ -60,10 +67,19 @@ if ($pageError == '' && $ngoId > 0) {
 
     if (!$cause) {
         $pageError = 'Cause not found or you do not have permission to view it.';
+    } else {
+        // Fetch accepted contribution types
+        $typesQuery = "SELECT contribution_type FROM cause_accepted_types WHERE cause_id = $causeId";
+        $typesResult = mysqli_query($con, $typesQuery);
+        if ($typesResult) {
+            while ($tRow = mysqli_fetch_assoc($typesResult)) {
+                $acceptedTypes[] = $tRow['contribution_type'];
+            }
+        }
     }
 }
 
-/* GET FUNDING DETAILS */
+/* GET FUNDING & CONTRIBUTION DETAILS */
 
 if ($cause && $pageError == '') {
 
@@ -72,7 +88,7 @@ if ($cause && $pageError == '') {
     $fundingQuery = "SELECT
                         COALESCE(SUM(
                             CASE
-                                WHEN LOWER(payment_status) IN
+                                WHEN contribution_type = 'money' AND LOWER(payment_status) IN
                                 ('completed', 'success', 'successful', 'paid')
                                 THEN monetary_amount
                                 ELSE 0
@@ -81,12 +97,17 @@ if ($cause && $pageError == '') {
 
                         COUNT(DISTINCT
                             CASE
-                                WHEN LOWER(payment_status) IN
-                                ('completed', 'success', 'successful', 'paid')
+                                WHEN (contribution_type = 'money' AND LOWER(payment_status) IN ('completed', 'success', 'successful', 'paid'))
+                                     OR contribution_type != 'money'
                                 THEN donor_name
                                 ELSE NULL
                             END
-                        ) AS total_donors
+                        ) AS total_donors,
+
+                        COUNT(*) AS total_contributions,
+                        COALESCE(SUM(CASE WHEN contribution_type = 'food' THEN 1 ELSE 0 END), 0) AS food_count,
+                        COALESCE(SUM(CASE WHEN contribution_type = 'clothes' THEN 1 ELSE 0 END), 0) AS clothes_count,
+                        COALESCE(SUM(CASE WHEN contribution_type = 'items' THEN 1 ELSE 0 END), 0) AS items_count
 
                     FROM contributions
                     WHERE ngo_id = $ngoId
@@ -94,11 +115,16 @@ if ($cause && $pageError == '') {
 
     $fundingResult = mysqli_query($con, $fundingQuery);
 
-    $fundingData = mysqli_fetch_assoc($fundingResult);
-
-    if ($fundingData) {
-        $totalRaised = $fundingData['total_raised'];
-        $totalDonors = $fundingData['total_donors'];
+    if ($fundingResult) {
+        $fundingData = mysqli_fetch_assoc($fundingResult);
+        if ($fundingData) {
+            $totalRaised = (float) $fundingData['total_raised'];
+            $totalDonors = (int) $fundingData['total_donors'];
+            $totalContributions = (int) $fundingData['total_contributions'];
+            $foodCount = (int) $fundingData['food_count'];
+            $clothesCount = (int) $fundingData['clothes_count'];
+            $itemsCount = (int) $fundingData['items_count'];
+        }
     }
 
     /* CALCULATE PROGRESS */
@@ -116,25 +142,33 @@ if ($cause && $pageError == '') {
 
         if ($endDate >= $today) {
             $daysRemaining = $today->diff($endDate)->days;
+            $isEnded = false;
+        } else {
+            $daysRemaining = 0;
+            $isEnded = true;
         }
     }
 
-    /* GET RECENT CONTRIBUTIONS */
+    /* GET RECENT CONTRIBUTIONS (Both money and resources) */
 
     $contributionQuery = "SELECT donor_name, contribution_type,
-                                 monetary_amount, created_at
+                                 monetary_amount, payment_status, fulfillment_status, created_at
                           FROM contributions
                           WHERE ngo_id = $ngoId
                           AND cause_id = $causeId
-                          AND LOWER(payment_status) IN
-                          ('completed', 'success', 'successful', 'paid')
+                          AND (
+                              LOWER(payment_status) IN ('completed', 'success', 'successful', 'paid')
+                              OR contribution_type != 'money'
+                          )
                           ORDER BY created_at DESC
                           LIMIT 5";
 
     $contributionResult = mysqli_query($con, $contributionQuery);
 
-    while ($row = mysqli_fetch_assoc($contributionResult)) {
-        $recentContributions[] = $row;
+    if ($contributionResult) {
+        while ($row = mysqli_fetch_assoc($contributionResult)) {
+            $recentContributions[] = $row;
+        }
     }
 }
 ?>
@@ -223,7 +257,7 @@ if ($cause && $pageError == '') {
 
                 <div>
 
-                    <a href="<?= baseUrl('ngo/edit-cause.php?id=' . $cause['id']) ?>"
+                    <a href="<?= baseUrl('ngo/edit-cause.php?id=' . (int)$cause['id']) ?>"
                        class="inline-block bg-white text-gold border border-gold font-bold py-2.5 px-6 rounded-full hover:bg-gold/5 transition-colors shadow-sm">
                         Edit Cause
                     </a>
@@ -246,6 +280,13 @@ if ($cause && $pageError == '') {
                             Cause Details
                         </h2>
 
+                        <!-- BANNER IMAGE -->
+                        <?php if (!empty($cause['cause_image'])): ?>
+                            <div class="w-full aspect-[16/9] md:aspect-[21/9] rounded-2xl overflow-hidden bg-forest/5 mb-6 relative">
+                                <img src="<?= asset('uploads/causes/' . $cause['cause_image']) ?>" alt="<?= $cause['title'] ?>" class="w-full h-full object-cover">
+                            </div>
+                        <?php endif; ?>
+
                         <div class="space-y-6">
 
                             <!-- SHORT DESCRIPTION -->
@@ -257,7 +298,7 @@ if ($cause && $pageError == '') {
                                 </h3>
 
                                 <p class="text-lg text-charcoal font-medium">
-                                    <?= $cause['short_description'] ?>
+                                    <?= !empty($cause['short_description']) ? nl2br($cause['short_description']) : 'No short description provided.' ?>
                                 </p>
 
                             </div>
@@ -270,15 +311,39 @@ if ($cause && $pageError == '') {
                                     Detailed Description
                                 </h3>
 
-                                <p class="text-base text-charcoal leading-relaxed">
-                                    <?= $cause['detailed_description'] ?>
+                                <p class="text-base text-charcoal leading-relaxed break-words" style="word-break: break-word; overflow-wrap: break-word;">
+                                    <?= !empty($cause['detailed_description']) ? nl2br($cause['detailed_description']) : 'No detailed description provided.' ?>
                                 </p>
 
                             </div>
 
-                            <!-- DATES -->
+                            <!-- DATES & GOAL GRID -->
 
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-6 border-t border-charcoal/10">
+
+                                <div>
+
+                                    <h3 class="text-sm font-bold text-charcoal-light uppercase tracking-wide mb-2">
+                                        Category
+                                    </h3>
+
+                                    <p class="text-base font-bold text-charcoal">
+                                        <?= ucfirst($cause['category']) ?>
+                                    </p>
+
+                                </div>
+
+                                <div>
+
+                                    <h3 class="text-sm font-bold text-charcoal-light uppercase tracking-wide mb-2">
+                                        Target Goal
+                                    </h3>
+
+                                    <p class="text-base font-bold text-charcoal">
+                                        ₹<?= number_format($fundingGoal, 2) ?>
+                                    </p>
+
+                                </div>
 
                                 <div>
 
@@ -306,6 +371,28 @@ if ($cause && $pageError == '') {
 
                             </div>
 
+                            <!-- ACCEPTED CONTRIBUTION TYPES -->
+
+                            <div class="pt-6 border-t border-charcoal/10">
+
+                                <h3 class="text-sm font-bold text-charcoal-light uppercase tracking-wide mb-3">
+                                    Accepted Contribution Types
+                                </h3>
+
+                                <div class="flex flex-wrap gap-2">
+                                    <?php if (!empty($acceptedTypes)): ?>
+                                        <?php foreach ($acceptedTypes as $type): ?>
+                                            <span class="inline-flex items-center px-3.5 py-1.5 bg-forest/10 text-forest text-xs font-bold uppercase tracking-wider rounded-lg border border-forest/20">
+                                                <?= $type === 'items' ? 'Useful Items' : ucfirst($type) ?>
+                                            </span>
+                                        <?php endforeach; ?>
+                                    <?php else: ?>
+                                        <span class="text-sm text-charcoal-light italic">No contribution types specified</span>
+                                    <?php endif; ?>
+                                </div>
+
+                            </div>
+
                         </div>
 
                     </div>
@@ -320,7 +407,7 @@ if ($cause && $pageError == '') {
                                 Recent Contributions
                             </h2>
 
-                            <a href="<?= baseUrl('ngo/contributions.php') ?>"
+                            <a href="<?= baseUrl('ngo/donations.php?cause_id=' . (int)$cause['id']) ?>"
                                class="text-sm font-bold text-gold hover:text-forest transition-colors">
                                 View All
                             </a>
@@ -338,12 +425,12 @@ if ($cause && $pageError == '') {
                                         <div>
 
                                             <p class="text-sm font-bold text-charcoal">
-                                                <?= $contribution['donor_name'] ?: 'Anonymous Donor' ?>
+                                                <?= !empty($contribution['donor_name']) ? $contribution['donor_name'] : 'Anonymous Donor' ?>
                                             </p>
 
                                             <p class="text-xs text-charcoal/70 mt-1">
 
-                                                <?= ucwords(str_replace('_', ' ', $contribution['contribution_type'])) ?>
+                                                <?= ucwords(str_replace('_', ' ', $contribution['contribution_type'] === 'items' ? 'Useful Items' : $contribution['contribution_type'])) ?>
 
                                                 &bull;
 
@@ -355,9 +442,15 @@ if ($cause && $pageError == '') {
 
                                         <div>
 
-                                            <span class="inline-block px-3 py-1 bg-forest/10 text-forest text-sm font-bold rounded-lg">
-                                                ₹<?= number_format($contribution['monetary_amount'], 2) ?>
-                                            </span>
+                                            <?php if ($contribution['contribution_type'] === 'money'): ?>
+                                                <span class="inline-block px-3 py-1 bg-forest/10 text-forest text-sm font-bold rounded-lg">
+                                                    ₹<?= number_format((float)$contribution['monetary_amount'], 2) ?>
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="inline-block px-3 py-1 bg-gold/10 text-gold-dark text-xs font-bold uppercase tracking-wider rounded-lg border border-gold/30">
+                                                    <?= ucfirst($contribution['contribution_type'] === 'items' ? 'Useful Items' : $contribution['contribution_type']) ?>
+                                                </span>
+                                            <?php endif; ?>
 
                                         </div>
 
@@ -478,6 +571,18 @@ if ($cause && $pageError == '') {
                             <div class="flex items-center justify-between gap-3 text-sm">
 
                                 <span class="text-charcoal-light font-medium">
+                                    Total Contributions
+                                </span>
+
+                                <span class="font-bold text-charcoal">
+                                    <?= number_format($totalContributions) ?>
+                                </span>
+
+                            </div>
+
+                            <div class="flex items-center justify-between gap-3 text-sm">
+
+                                <span class="text-charcoal-light font-medium">
                                     Days Remaining
                                 </span>
 
@@ -485,7 +590,11 @@ if ($cause && $pageError == '') {
 
                                     <?php if (!empty($cause['end_date'])): ?>
 
-                                        <?= $daysRemaining ?>
+                                        <?php if ($isEnded): ?>
+                                            <span class="text-red-600 font-bold">Campaign Ended</span>
+                                        <?php else: ?>
+                                            <?= $daysRemaining ?> days
+                                        <?php endif; ?>
 
                                     <?php else: ?>
 
@@ -496,6 +605,32 @@ if ($cause && $pageError == '') {
                                 </span>
 
                             </div>
+
+                            <?php if ($foodCount > 0 || $clothesCount > 0 || $itemsCount > 0): ?>
+                                <div class="pt-4 border-t border-charcoal/5">
+                                    <span class="text-xs font-bold text-charcoal-light uppercase tracking-wider block mb-2">Resource Contributions</span>
+                                    <div class="space-y-1 text-xs">
+                                        <?php if ($foodCount > 0): ?>
+                                            <div class="flex justify-between py-0.5">
+                                                <span class="text-charcoal-light">Food Donations:</span>
+                                                <span class="font-bold text-forest"><?= $foodCount ?></span>
+                                            </div>
+                                        <?php endif; ?>
+                                        <?php if ($clothesCount > 0): ?>
+                                            <div class="flex justify-between py-0.5">
+                                                <span class="text-charcoal-light">Clothes Donations:</span>
+                                                <span class="font-bold text-forest"><?= $clothesCount ?></span>
+                                            </div>
+                                        <?php endif; ?>
+                                        <?php if ($itemsCount > 0): ?>
+                                            <div class="flex justify-between py-0.5">
+                                                <span class="text-charcoal-light">Useful Items:</span>
+                                                <span class="font-bold text-forest"><?= $itemsCount ?></span>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
 
                         </div>
 

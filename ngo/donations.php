@@ -469,7 +469,7 @@ $statusClasses = [
                             </button>
 
                             <a
-                                href="<?= baseUrl('ngo/contributions.php') ?>"
+                                href="<?= baseUrl('ngo/donations.php') ?>"
                                 class="px-6 py-2 border border-charcoal/20 text-charcoal rounded-xl font-bold hover:bg-ivory transition-colors"
                             >
                                 Reset

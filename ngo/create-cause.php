@@ -16,6 +16,7 @@ $short_desc = "";
 $long_desc = "";
 $start_date = "";
 $end_date = "";
+$accepted_types = [];
 
 /* Get logged-in NGO */
 $user_id = isset($_SESSION['user_id']) ? (int) $_SESSION['user_id'] : 0;
@@ -40,6 +41,7 @@ if (isset($_POST['create_cause'])) {
     $long_desc = trim($_POST['long_desc'] ?? '');
     $start_date = trim($_POST['start_date'] ?? '');
     $end_date = trim($_POST['end_date'] ?? '');
+    $accepted_types = isset($_POST['accepted_types']) && is_array($_POST['accepted_types']) ? $_POST['accepted_types'] : [];
 
     if ($ngo_id <= 0) {
         $errorMsg = "NGO account not found. Please log in again.";
@@ -52,6 +54,8 @@ if (isset($_POST['create_cause'])) {
         $end_date === ''
     ) {
         $errorMsg = "Please fill in all required fields.";
+    } elseif (empty($accepted_types)) {
+        $errorMsg = "Please select at least one accepted contribution type.";
     } elseif (!is_numeric($target) || (float) $target <= 0) {
         $errorMsg = "Please enter a valid target amount.";
     } elseif (
@@ -89,6 +93,13 @@ if (isset($_POST['create_cause'])) {
             );
 
             if (mysqli_stmt_execute($stmt)) {
+                $new_cause_id = mysqli_insert_id($con);
+                foreach ($accepted_types as $type) {
+                    $type = trim($type);
+                    if (in_array($type, ['money', 'food', 'clothes', 'items'])) {
+                        mysqli_query($con, "INSERT INTO cause_accepted_types (cause_id, contribution_type) VALUES ($new_cause_id, '$type')");
+                    }
+                }
                 $successMsg = "Cause created successfully!";
 
                 $title = "";
@@ -98,6 +109,7 @@ if (isset($_POST['create_cause'])) {
                 $long_desc = "";
                 $start_date = "";
                 $end_date = "";
+$accepted_types = [];
             } else {
                 $errorMsg = "Unable to create the cause. Please try again.";
             }
@@ -186,6 +198,30 @@ ob_start();
                                min="1" step="0.01" required
                                class="w-full px-4 py-3 border border-charcoal/20 rounded-xl text-charcoal placeholder-charcoal/40 focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent transition-all bg-ivory/30 focus:bg-white"
                                placeholder="500000">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-bold text-charcoal mb-2">
+                            Accepted Contribution Types <span class="text-red-500">*</span>
+                        </label>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <label class="flex items-center gap-2 p-3 border border-charcoal/20 rounded-xl bg-ivory/30 hover:bg-white cursor-pointer transition-colors">
+                                <input type="checkbox" name="accepted_types[]" value="money" <?= in_array('money', $accepted_types) ? 'checked' : '' ?> class="h-4 w-4 text-forest rounded border-charcoal/30 accent-forest">
+                                <span class="text-sm font-medium text-charcoal">Money</span>
+                            </label>
+                            <label class="flex items-center gap-2 p-3 border border-charcoal/20 rounded-xl bg-ivory/30 hover:bg-white cursor-pointer transition-colors">
+                                <input type="checkbox" name="accepted_types[]" value="food" <?= in_array('food', $accepted_types) ? 'checked' : '' ?> class="h-4 w-4 text-forest rounded border-charcoal/30 accent-forest">
+                                <span class="text-sm font-medium text-charcoal">Food</span>
+                            </label>
+                            <label class="flex items-center gap-2 p-3 border border-charcoal/20 rounded-xl bg-ivory/30 hover:bg-white cursor-pointer transition-colors">
+                                <input type="checkbox" name="accepted_types[]" value="clothes" <?= in_array('clothes', $accepted_types) ? 'checked' : '' ?> class="h-4 w-4 text-forest rounded border-charcoal/30 accent-forest">
+                                <span class="text-sm font-medium text-charcoal">Clothes</span>
+                            </label>
+                            <label class="flex items-center gap-2 p-3 border border-charcoal/20 rounded-xl bg-ivory/30 hover:bg-white cursor-pointer transition-colors">
+                                <input type="checkbox" name="accepted_types[]" value="items" <?= in_array('items', $accepted_types) ? 'checked' : '' ?> class="h-4 w-4 text-forest rounded border-charcoal/30 accent-forest">
+                                <span class="text-sm font-medium text-charcoal">Useful Items</span>
+                            </label>
+                        </div>
                     </div>
 
                     <div>
