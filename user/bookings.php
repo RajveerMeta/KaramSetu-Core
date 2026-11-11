@@ -1,55 +1,50 @@
 <?php
 require_once __DIR__ . '/../includes/functions.php';
-ob_start();
+require_once __DIR__ . '/../Database/db_config.php';
 
-// Demo data for the logged-in user's event bookings
-$bookings = [
-    [
-        'booking_id' => 'BK-1001',
-        'event_name' => 'Hope For Every Child — Charity Evening',
-        'date' => '24 Sep 2026',
-        'time' => '06:00 PM',
-        'venue' => 'Grand Crystal Hall, Ahmedabad',
-        'tickets' => 2,
-        'status' => 'Confirmed'
-    ],
-    [
-        'booking_id' => 'BK-1002',
-        'event_name' => 'Skills For Tomorrow Workshop',
-        'date' => '05 Oct 2026',
-        'time' => '10:00 AM',
-        'venue' => 'Youth Centre, Rajkot',
-        'tickets' => 1,
-        'status' => 'Confirmed'
-    ],
-    [
-        'booking_id' => 'BK-1003',
-        'event_name' => 'Run For A Cause Marathon 2026',
-        'date' => '15 Aug 2026',
-        'time' => '06:00 AM',
-        'venue' => 'Riverfront Park, Surat',
-        'tickets' => 1,
-        'status' => 'Completed'
-    ],
-    [
-        'booking_id' => 'BK-0994',
-        'event_name' => 'Community Tree Plantation Drive',
-        'date' => '30 Jul 2026',
-        'time' => '08:00 AM',
-        'venue' => 'City Botanical Garden, Surat',
-        'tickets' => 2,
-        'status' => 'Completed'
-    ],
-    [
-        'booking_id' => 'BK-0985',
-        'event_name' => 'Women Empowerment Seminar',
-        'date' => '01 Sep 2026',
-        'time' => '02:00 PM',
-        'venue' => 'Convention Centre, Mumbai',
-        'tickets' => 1,
-        'status' => 'Cancelled'
-    ],
-];
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+$user_id = isset($_SESSION['user_id']) ? (int) $_SESSION['user_id'] : 0;
+
+$bookings = [];
+
+if ($user_id > 0) {
+    $bookingsQuery = "SELECT eb.*, 
+                             e.title AS event_name, e.event_date, e.start_time, e.location AS venue,
+                             n.name AS ngo_name
+                      FROM event_bookings eb
+                      INNER JOIN events e ON e.id = eb.event_id
+                      INNER JOIN ngos n ON n.id = e.ngo_id
+                      WHERE eb.user_id = $user_id
+                      ORDER BY eb.created_at DESC";
+    $bookingsResult = mysqli_query($con, $bookingsQuery);
+    if ($bookingsResult) {
+        while ($b = mysqli_fetch_assoc($bookingsResult)) {
+            $statusRaw = strtolower($b['booking_status']);
+            if ($statusRaw === 'confirmed') {
+                $status = 'Confirmed';
+            } elseif ($statusRaw === 'attended') {
+                $status = 'Completed';
+            } else {
+                $status = 'Cancelled';
+            }
+
+            $bookings[] = [
+                'booking_id' => $b['booking_reference'],
+                'event_name' => $b['event_name'],
+                'date' => date('d M Y', strtotime($b['event_date'])),
+                'time' => $b['start_time'] ? date('h:i A', strtotime($b['start_time'])) : 'TBD',
+                'venue' => $b['venue'],
+                'tickets' => (int) $b['quantity'],
+                'status' => $status
+            ];
+        }
+    }
+}
+
+ob_start();
 ?>
 
 <div class="bg-ivory/40 min-h-screen py-10 lg:py-16">

@@ -24,16 +24,21 @@
   // Ticket quantity
   // Ticket quantity
 const donationCountDisplay = $("#donationCountDisplay");
+const bookingQuantity = $("#bookingQuantity");
 const totalAmountDisplay = $("#totalAmountDisplay");
 const ticketBookingCard = $("#ticketBookingCard");
 
 const ticketPrice = parseInt(ticketBookingCard.data("ticket-price")) || 0;
 
 function updateTotalAmount() {
-    const count = parseInt(donationCountDisplay.text()) || 1;
-    const total = ticketPrice * count;
+  const count = parseInt(donationCountDisplay.text()) || 1;
+  const total = ticketPrice * count;
 
-    totalAmountDisplay.text("₹" + total.toLocaleString("en-IN"));
+  // Update hidden input
+  bookingQuantity.val(count);
+
+  // Update total amount
+  totalAmountDisplay.text("₹" + total.toLocaleString("en-IN"));
 }
 
 $("#donationMinusBtn").on("click", function () {

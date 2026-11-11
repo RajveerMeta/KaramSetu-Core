@@ -10,12 +10,7 @@ if (!isset($description)) $description = 'Causes on KarmaSetu are connected to N
 <section class="py-20 bg-ivory-dark relative overflow-hidden">
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        <div class="text-center mb-16">
-            <h2 class="text-3xl font-serif text-forest mb-4"><?= e($title) ?></h2>
-            <p class="text-charcoal-light font-light text-lg">
-                <?= e($description) ?>
-            </p>
-        </div>
+        
 
         <div class="relative">
             <!-- Continuous line -->

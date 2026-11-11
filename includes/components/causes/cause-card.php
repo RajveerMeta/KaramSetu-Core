@@ -9,7 +9,7 @@
     'status' => 'active' // active, urgent, nearly-complete, completed
  */ ?>
 
-<div class="bg-white rounded-2xl overflow-hidden border border-gold/20 shadow-sm hover:shadow-lg transition-all flex flex-col h-full group cause-card-item cause-card-wrapper" data-accepts="<?= htmlspecialchars(json_encode($accepts)) ?>" data-location="<?= strtolower($location) ?>" data-title="<?= htmlspecialchars(strtolower($title)) ?>" data-needtext="<?= htmlspecialchars(strtolower($needText)) ?>" data-status="<?= $status ?>">
+<div class="bg-white rounded-2xl overflow-hidden border border-gold/20 shadow-sm hover:shadow-lg transition-all flex flex-col h-full  w-full min-w-0  group cause-card-item cause-card-wrapper" data-accepts="<?= htmlspecialchars(json_encode($accepts)) ?>" data-location="<?= strtolower($location) ?>" data-title="<?= htmlspecialchars(strtolower($title)) ?>" data-needtext="<?= htmlspecialchars(strtolower($needText)) ?>" data-status="<?= $status ?>">
     
     <!-- Header -->
     <div class="p-6 border-b border-gold/10 relative overflow-hidden">
@@ -48,11 +48,11 @@
     </div>
 
     <!-- Body -->
-    <div class="p-6 flex-1 flex flex-col">
+    <div class="p-6 flex-1 flex flex-col min-w-0">
         
         <div class="mb-6 flex-1">
             <span class="block text-xs font-bold text-charcoal uppercase tracking-wider mb-1">Need</span>
-            <p class="text-charcoal-light text-sm font-medium"><?= $needText ?></p>
+            <p class="text-charcoal-light text-sm font-medium break-words [overflow-wrap:anywhere]"><?= $needText ?></p>
         </div>
 
         <!-- Progress -->

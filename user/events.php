@@ -1,63 +1,100 @@
 <?php
 require_once __DIR__ . '/../includes/functions.php';
-ob_start();
-?>
+require_once __DIR__ . '/../Database/db_config.php';
 
-<?php
-    $summaries = (object)[
-        'upcoming_events' => 2,
-        'tickets_booked' => 3,
-        'events_attended' => 1
-    ];
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
-    $myTickets = [
-        [
-            'event_id' => 1,
-            'ticket_id' => 'KS-TKT-10001',
-            'quantity' => 1,
-            'booking_status' => 'Confirmed',
-            'type' => 'upcoming'
-        ],
-        [
-            'event_id' => 2,
-            'ticket_id' => 'KS-TKT-10002',
-            'quantity' => 2,
-            'booking_status' => 'Confirmed',
-            'type' => 'upcoming'
-        ],
-        [
-            'event_id' => 3,
-            'ticket_id' => 'KS-TKT-09991',
-            'quantity' => 1,
-            'booking_status' => 'Attended',
-            'type' => 'past'
-        ],
-        [
-            'event_id' => 4,
-            'ticket_id' => 'KS-TKT-09982',
-            'quantity' => 1,
-            'booking_status' => 'Attended',
-            'type' => 'past'
-        ],
-    ];
+$user_id = isset($_SESSION['user_id']) ? (int) $_SESSION['user_id'] : 0;
 
-    $userEvents = [];
+$categoryImages = [
+    'fundraising' => 'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?q=80&w=800&auto=format&fit=crop',
+    'fundraiser' => 'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?q=80&w=800&auto=format&fit=crop',
+    'workshop' => 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=800&auto=format&fit=crop',
+    'sports' => 'https://images.unsplash.com/photo-1552674605-db6ffd4facb5?q=80&w=800&auto=format&fit=crop',
+    'environment' => 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?q=80&w=800&auto=format&fit=crop',
+    'healthcare' => 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?q=80&w=800&auto=format&fit=crop',
+    'health' => 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?q=80&w=800&auto=format&fit=crop',
+    'community' => 'https://images.unsplash.com/photo-1511632765486-a01980e01a18?q=80&w=800&auto=format&fit=crop',
+    'food & hunger' => 'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?q=80&w=800&auto=format&fit=crop',
+    'animal welfare' => 'https://images.unsplash.com/photo-1548767797-d8c844163c4c?q=80&w=800&auto=format&fit=crop',
+    'education' => 'https://images.unsplash.com/photo-1509062522246-3755977927d7?q=80&w=800&auto=format&fit=crop'
+];
+$defaultImage = 'https://images.unsplash.com/photo-1511632765486-a01980e01a18?q=80&w=800&auto=format&fit=crop';
 
-    foreach ($myTickets as $ticket) {
-        $eventData = null;
-        if (isset($events) && is_array($events)) {
-            foreach ($events as $event) {
-                if ($event['id'] == $ticket['event_id']) {
-                    $eventData = $event;
-                    break;
+$userEvents = [];
+$totalUpcoming = 0;
+$totalTickets = 0;
+$totalAttended = 0;
+
+if ($user_id > 0) {
+    $bookingsQuery = "SELECT eb.*, 
+                             e.title, e.category, e.event_date, e.start_time, e.end_time, e.location, e.entry_fee, e.status AS event_status,
+                             n.name AS ngo_name
+                      FROM event_bookings eb
+                      INNER JOIN events e ON e.id = eb.event_id
+                      INNER JOIN ngos n ON n.id = e.ngo_id
+                      WHERE eb.user_id = $user_id
+                      ORDER BY eb.created_at DESC";
+    $bookingsResult = mysqli_query($con, $bookingsQuery);
+    if ($bookingsResult) {
+        $today = date('Y-m-d');
+        while ($row = mysqli_fetch_assoc($bookingsResult)) {
+            $isPast = ($row['event_date'] < $today || $row['booking_status'] === 'attended');
+            $type = $isPast ? 'past' : 'upcoming';
+            
+            if ($row['booking_status'] === 'confirmed') {
+                $statusDisplay = 'Confirmed';
+            } elseif ($row['booking_status'] === 'attended') {
+                $statusDisplay = 'Attended';
+            } else {
+                $statusDisplay = 'Cancelled';
+            }
+            
+            if ($row['booking_status'] !== 'cancelled') {
+                $totalTickets += (int) $row['quantity'];
+                if ($type === 'upcoming') {
+                    $totalUpcoming++;
+                } else {
+                    $totalAttended++;
                 }
             }
-        }
-        if ($eventData) {
-            $userEvents[] = (object) array_merge($ticket, $eventData);
+            
+            $catKey = strtolower(trim($row['category']));
+            $img = $categoryImages[$catKey] ?? $defaultImage;
+            
+            $feeVal = (float) $row['ticket_price'];
+            $feeDisplay = ($feeVal == 0) ? 'Free' : ('₹' . number_format($feeVal));
+            
+            $item = (object) [
+                'event_id' => $row['event_id'],
+                'ticket_id' => $row['booking_reference'],
+                'quantity' => (int) $row['quantity'],
+                'booking_status' => $statusDisplay,
+                'type' => $type,
+                'title' => $row['title'],
+                'ngo_name' => $row['ngo_name'],
+                'date' => date('d M Y', strtotime($row['event_date'])),
+                'time' => $row['start_time'] ? date('h:i A', strtotime($row['start_time'])) : 'TBD',
+                'location' => $row['location'],
+                'entry_fee' => $feeDisplay,
+                'image' => $img
+            ];
+            $userEvents[] = $item;
         }
     }
-    $hasEvents = count($userEvents) > 0;
+}
+
+$summaries = (object)[
+    'upcoming_events' => $totalUpcoming,
+    'tickets_booked' => $totalTickets,
+    'events_attended' => $totalAttended
+];
+
+$hasEvents = count($userEvents) > 0;
+
+ob_start();
 ?>
 
 <div class="bg-ivory/40 min-h-screen py-10 lg:py-16" id="userEventsWrapper">
@@ -69,7 +106,8 @@ ob_start();
             <p class="text-charcoal-light">Keep track of the fundraising events you've joined through KarmaSetu.</p>
         </div>
 
-        <!-- Summary Cards -->        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:gap-6 mb-10">
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:gap-6 mb-10">
             <!-- Card 1 -->
             <div class="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gold/20 flex flex-col justify-center relative overflow-hidden transition-shadow hover:shadow-md">
                 <div class="absolute -right-6 -top-6 w-24 h-24 bg-gold/10 rounded-full blur-xl pointer-events-none"></div>
@@ -91,13 +129,13 @@ ob_start();
         <?php if ($hasEvents): ?>
             <!-- Tabs -->
             <div class="flex flex-col md:flex-row items-center gap-2 mb-8 border-b border-charcoal/10 pb-4 overflow-x-auto">
-                <button class="user-event-tab bg-white text-charcoal hover:bg-ivory border border-gold/20 px-6 py-2.5 rounded-full font-bold text-sm transition-colors whitespace-nowrap" data-tab="all" class="px-6 py-2.5 rounded-full font-bold text-sm transition-colors whitespace-nowrap">
+                <button class="user-event-tab bg-forest text-ivory border border-gold/20 px-6 py-2.5 rounded-full font-bold text-sm transition-colors whitespace-nowrap cursor-pointer" data-tab="all">
                     All Events
                 </button>
-                <button class="user-event-tab bg-white text-charcoal hover:bg-ivory border border-gold/20 px-6 py-2.5 rounded-full font-bold text-sm transition-colors whitespace-nowrap" data-tab="upcoming" class="px-6 py-2.5 rounded-full font-bold text-sm transition-colors whitespace-nowrap">
+                <button class="user-event-tab bg-white text-charcoal hover:bg-ivory border border-gold/20 px-6 py-2.5 rounded-full font-bold text-sm transition-colors whitespace-nowrap cursor-pointer" data-tab="upcoming">
                     Upcoming
                 </button>
-                <button class="user-event-tab bg-white text-charcoal hover:bg-ivory border border-gold/20 px-6 py-2.5 rounded-full font-bold text-sm transition-colors whitespace-nowrap" data-tab="past" class="px-6 py-2.5 rounded-full font-bold text-sm transition-colors whitespace-nowrap">
+                <button class="user-event-tab bg-white text-charcoal hover:bg-ivory border border-gold/20 px-6 py-2.5 rounded-full font-bold text-sm transition-colors whitespace-nowrap cursor-pointer" data-tab="past">
                     Past
                 </button>
             </div>
@@ -151,7 +189,7 @@ ob_start();
                                     </div>
                                     <div>
                                         <span class="block text-[10px] font-bold text-charcoal-light uppercase tracking-widest mb-0.5">Quantity</span>
-                                        <span class="font-bold text-forest text-sm"><?= e($event->quantity) ?> <?= e($event->quantity > 1 ? 'Tickets' : 'Ticket') ?></span>
+                                        <span class="font-bold text-forest text-sm"><?= e($event->quantity) ?> <?= $event->quantity > 1 ? 'Tickets' : 'Ticket' ?></span>
                                     </div>
                                 </div>
                                 <div>
@@ -163,15 +201,15 @@ ob_start();
                             <!-- Action Buttons -->
                             <div class="flex flex-col sm:flex-row items-center gap-3 pt-2">
                                 <?php if ($event->booking_status === 'Confirmed'): ?>
-                                    <button class="user-event-view-ticket-btn w-full sm:w-1/2 px-4 py-3 bg-forest text-ivory hover:bg-forest-light rounded-xl font-bold text-sm transition-colors text-center shadow-md flex flex-col md:flex-row items-center justify-center gap-2" data-ticket="<?= e($event->ticket_id) ?>" class="w-full sm:w-1/2 px-4 py-3 bg-forest text-ivory hover:bg-forest-light rounded-xl font-bold text-sm transition-colors text-center shadow-md flex flex-col md:flex-row items-center justify-center gap-2">
+                                    <button type="button" class="user-event-view-ticket-btn w-full sm:w-1/2 px-4 py-3 bg-forest text-ivory hover:bg-forest-light rounded-xl font-bold text-sm transition-colors text-center shadow-md flex flex-col md:flex-row items-center justify-center gap-2 cursor-pointer" data-ticket="<?= e($event->ticket_id) ?>">
                                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path></svg>
                                         View Ticket
                                     </button>
-                                    <a href="/events/<?= e($event->event_id) ?>" class="w-full sm:w-1/2 px-4 py-3 bg-white border border-forest/30 text-forest hover:bg-forest hover:text-ivory rounded-xl font-bold text-sm transition-colors text-center shadow-sm">
+                                    <a href="<?= baseUrl('?page=event-details&id=' . $event->event_id) ?>" class="w-full sm:w-1/2 px-4 py-3 bg-white border border-forest/30 text-forest hover:bg-forest hover:text-ivory rounded-xl font-bold text-sm transition-colors text-center shadow-sm">
                                         View Event
                                     </a>
                                 <?php else: ?>
-                                    <a href="/events/<?= e($event->event_id) ?>" class="w-full px-4 py-3 bg-white border border-forest/30 text-forest hover:bg-forest hover:text-ivory rounded-xl font-bold text-sm transition-colors text-center shadow-sm">
+                                    <a href="<?= baseUrl('?page=event-details&id=' . $event->event_id) ?>" class="w-full px-4 py-3 bg-white border border-forest/30 text-forest hover:bg-forest hover:text-ivory rounded-xl font-bold text-sm transition-colors text-center shadow-sm">
                                         View Event
                                     </a>
                                 <?php endif; ?>
@@ -189,7 +227,7 @@ ob_start();
                 </div>
                 <h3 class="text-xl font-serif font-bold text-forest mb-2">No events found</h3>
                 <p class="text-charcoal-light max-w-sm mx-auto mb-6">You don't have any events matching this category.</p>
-                <button id="userEventsClearBtn" class="px-6 py-2 border border-charcoal/20 text-sm font-bold rounded-full shadow-sm text-charcoal bg-white hover:bg-ivory transition-colors">
+                <button type="button" id="userEventsClearBtn" class="px-6 py-2 border border-charcoal/20 text-sm font-bold rounded-full shadow-sm text-charcoal bg-white hover:bg-ivory transition-colors cursor-pointer">
                     View All
                 </button>
             </div>
@@ -213,7 +251,7 @@ ob_start();
     <!-- Ticket Modal -->
     <div id="ticketModal" style="display: none;" class="fixed inset-0 z-50 flex flex-col md:flex-row items-center justify-center p-4 md:p-8 bg-charcoal/60 backdrop-blur-sm">
         <div class="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl relative border border-gold/20 text-center" id="ticketModalContent">
-            <button class="ticket-modal-close-btn" class="absolute top-4 right-4 text-charcoal-light hover:text-charcoal transition-colors">
+            <button type="button" class="ticket-modal-close-btn absolute top-4 right-4 text-charcoal-light hover:text-charcoal transition-colors cursor-pointer">
                 <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
             
@@ -229,12 +267,69 @@ ob_start();
                 <span class="block text-2xl md:text-4xl font-mono font-bold text-charcoal tracking-widest" id="ticketModalIdDisplay"></span>
             </div>
             
-            <button class="ticket-modal-close-btn" class="w-full bg-forest text-ivory hover:bg-forest-light px-4 py-3 rounded-xl font-bold transition-colors">
+            <button type="button" class="ticket-modal-close-btn w-full bg-forest text-ivory hover:bg-forest-light px-4 py-3 rounded-xl font-bold transition-colors cursor-pointer">
                 Close
             </button>
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var tabs = document.querySelectorAll('.user-event-tab');
+    var items = document.querySelectorAll('.user-event-item');
+    var emptyState = document.getElementById('userEventsEmptyState');
+    var modal = document.getElementById('ticketModal');
+    var idDisplay = document.getElementById('ticketModalIdDisplay');
+    
+    tabs.forEach(function(tabBtn) {
+        tabBtn.addEventListener('click', function() {
+            var selectedTab = this.getAttribute('data-tab');
+            tabs.forEach(function(b) {
+                b.className = 'user-event-tab bg-white text-charcoal hover:bg-ivory border border-gold/20 px-6 py-2.5 rounded-full font-bold text-sm transition-colors whitespace-nowrap cursor-pointer';
+            });
+            this.className = 'user-event-tab bg-forest text-ivory border border-gold/20 px-6 py-2.5 rounded-full font-bold text-sm transition-colors whitespace-nowrap cursor-pointer';
+            
+            var visible = 0;
+            items.forEach(function(item) {
+                var itemType = item.getAttribute('data-type');
+                if (selectedTab === 'all' || itemType === selectedTab) {
+                    item.style.display = 'flex';
+                    visible++;
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+            
+            if (emptyState) {
+                emptyState.style.display = (visible === 0) ? 'flex' : 'none';
+            }
+        });
+    });
+
+    document.querySelectorAll('.user-event-view-ticket-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var tId = this.getAttribute('data-ticket');
+            if (idDisplay) idDisplay.innerText = tId;
+            if (modal) modal.style.display = 'flex';
+        });
+    });
+
+    document.querySelectorAll('.ticket-modal-close-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            if (modal) modal.style.display = 'none';
+        });
+    });
+
+    var clearBtn = document.getElementById('userEventsClearBtn');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function() {
+            var allBtn = document.querySelector('.user-event-tab[data-tab="all"]');
+            if (allBtn) allBtn.click();
+        });
+    }
+});
+</script>
 
 <?php
 $content = ob_get_clean();

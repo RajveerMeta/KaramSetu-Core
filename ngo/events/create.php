@@ -21,6 +21,7 @@ $max_participants = '';
 $short_desc = '';
 $long_desc = '';
 $entry_fee = '0';
+$event_image = '';
 
 if (isset($_POST["create_event"])) {
 
@@ -35,6 +36,40 @@ if (isset($_POST["create_event"])) {
     $short_desc = $_POST["short_desc"];
     $long_desc = $_POST["long_desc"];
     $entry_fee = $_POST["entry_fee"];
+    // Handle Event Image
+
+if (isset($_FILES['event_image']) && $_FILES['event_image']['name'] != '') {
+
+    $imageName = $_FILES['event_image']['name'];
+    $imageTmp = $_FILES['event_image']['tmp_name'];
+    $imageSize = $_FILES['event_image']['size'];
+
+    $imageExtension = strtolower(pathinfo($imageName, PATHINFO_EXTENSION));
+
+    $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+
+    if (in_array($imageExtension, $allowedExtensions)) {
+
+        if ($imageSize <= 2 * 1024 * 1024) {
+
+            $newImageName = 'event_' . time() . '.' . $imageExtension;
+
+            $uploadPath = __DIR__ . '/../../uploads/events/' . $newImageName;
+
+            if (move_uploaded_file($imageTmp, $uploadPath)) {
+                $event_image = 'uploads/events/' . $newImageName;
+            } else {
+                $errorMsg = "Image upload failed!";
+            }
+
+        } else {
+            $errorMsg = "Image size must be less than 2MB!";
+        }
+
+    } else {
+        $errorMsg = "Only JPG, JPEG, PNG and WEBP images are allowed!";
+    }
+}
 
     if (isset($_SESSION['user_id'])) {
 
@@ -84,7 +119,8 @@ if (isset($_POST["create_event"])) {
                         max_participants,
                         status,
                         short_description,
-                        detailed_description
+                        detailed_description,
+                        event_image
                     )
                     VALUES
                     (
@@ -99,7 +135,8 @@ if (isset($_POST["create_event"])) {
                         " . ($max_participants === NULL ? "NULL" : "'$max_participants'") . ",
                         'upcoming',
                         '$short_desc',
-                        " . ($long_desc === NULL ? "NULL" : "'$long_desc'") . "
+                        " . ($long_desc === NULL ? "NULL" : "'$long_desc'") . ",
+                        '$event_image'  
                     )";
 
             if (mysqli_query($con, $sql)) {
@@ -160,7 +197,7 @@ ob_start();
                 </div>
             <?php } ?>
 
-            <form id="eventForm" method="POST" class="space-y-6 validation-form" novalidate>
+            <form id="eventForm" method="POST" enctype="multipart/form-data" class="space-y-6 validation-form" novalidate>
 
                 <div class="space-y-4">
 
@@ -352,6 +389,25 @@ ob_start();
 
                         <p class="text-xs text-charcoal-light mt-1">
                             Enter 0 if the event is free.
+                        </p>
+                    </div>
+                    <!-- Event Image -->
+                    <div>
+                        <label class="block text-sm font-bold text-charcoal mb-1">
+                            Event Image <span class="text-red-500">*</span>
+                        </label>
+                    
+                        <input
+                            type="file"
+                            name="event_image"
+                            id="event_image"
+                            accept=".jpg,.jpeg,.png,.webp"
+                            required
+                            class="w-full px-4 py-3 border border-charcoal/20 rounded-xl text-charcoal bg-ivory/30"
+                        >
+                    
+                        <p class="text-xs text-charcoal-light mt-1">
+                            Upload JPG, PNG or WEBP image. Maximum size: 2MB.
                         </p>
                     </div>
 
