@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../Database/db_config.php';
 require_once __DIR__ . '/../includes/functions.php';
+requireUser();
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: " . baseUrl('auth/login.php'));

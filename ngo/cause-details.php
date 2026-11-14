@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/functions.php';
+requireNgo();
 include __DIR__ . '/../Database/db_config.php';
 
 ob_start();
@@ -66,7 +67,8 @@ if ($pageError == '' && $ngoId > 0) {
     $cause = mysqli_fetch_assoc($result);
 
     if (!$cause) {
-        $pageError = 'Cause not found or you do not have permission to view it.';
+        header('Location: ' . baseUrl('ngo/causes.php'));
+        exit;
     } else {
         // Fetch accepted contribution types
         $typesQuery = "SELECT contribution_type FROM cause_accepted_types WHERE cause_id = $causeId";

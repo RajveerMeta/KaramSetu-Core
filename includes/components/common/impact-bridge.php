@@ -69,19 +69,19 @@
             
             <!-- Filter -->
             <div class="flex flex-wrap justify-center gap-2 mb-10" id="impactFilterButtons">
-                <button data-id="all" class="impact-filter-btn bg-forest text-ivory px-5 py-2 rounded-full text-sm font-medium transition-colors">All Needs</button>
-                <button data-id="food" class="impact-filter-btn bg-transparent text-charcoal hover:bg-gold/10 px-5 py-2 rounded-full text-sm font-medium transition-colors">Food</button>
-                <button data-id="education" class="impact-filter-btn bg-transparent text-charcoal hover:bg-gold/10 px-5 py-2 rounded-full text-sm font-medium transition-colors">Education</button>
-                <button data-id="health" class="impact-filter-btn bg-transparent text-charcoal hover:bg-gold/10 px-5 py-2 rounded-full text-sm font-medium transition-colors">Health</button>
-                <button data-id="clothes" class="impact-filter-btn bg-transparent text-charcoal hover:bg-gold/10 px-5 py-2 rounded-full text-sm font-medium transition-colors">Clothes</button>
-                <button data-id="community" class="impact-filter-btn bg-transparent text-charcoal hover:bg-gold/10 px-5 py-2 rounded-full text-sm font-medium transition-colors">Community</button>
+                <button type="button" data-id="all" class="impact-filter-btn bg-forest text-ivory px-5 py-2 rounded-full text-sm font-medium transition-colors">All Needs</button>
+                <button type="button" data-id="food" class="impact-filter-btn bg-transparent text-charcoal hover:bg-gold/10 px-5 py-2 rounded-full text-sm font-medium transition-colors">Food</button>
+                <button type="button" data-id="education" class="impact-filter-btn bg-transparent text-charcoal hover:bg-gold/10 px-5 py-2 rounded-full text-sm font-medium transition-colors">Education</button>
+                <button type="button" data-id="health" class="impact-filter-btn bg-transparent text-charcoal hover:bg-gold/10 px-5 py-2 rounded-full text-sm font-medium transition-colors">Health</button>
+                <button type="button" data-id="clothes" class="impact-filter-btn bg-transparent text-charcoal hover:bg-gold/10 px-5 py-2 rounded-full text-sm font-medium transition-colors">Clothes</button>
+                <button type="button" data-id="community" class="impact-filter-btn bg-transparent text-charcoal hover:bg-gold/10 px-5 py-2 rounded-full text-sm font-medium transition-colors">Community</button>
             </div>
 
             <!-- Previews -->
             <?php include __DIR__ . '/causes-preview.php'; ?>
 
             <div class="mt-12 text-center">
-                <a href="#" class="inline-flex items-center text-forest font-semibold hover:text-gold transition-colors">
+                <a href="<?= baseUrl('?page=causes') ?>" class="inline-flex items-center text-forest font-semibold hover:text-gold transition-colors">
                     <span class="border-b-2 border-forest hover:border-gold pb-1 transition-colors">Explore all causes</span>
                     <svg class="ml-2 w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
                 </a>
@@ -92,4 +92,35 @@
     </div>
 </section>
 
-
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    if (window.jQuery) {
+        $('.impact-filter-btn').on('click', function() {
+            var filter = String($(this).data('id')).toLowerCase();
+            $('.impact-filter-btn')
+                .removeClass('bg-forest text-ivory')
+                .addClass('bg-transparent text-charcoal hover:bg-gold/10');
+            $(this)
+                .removeClass('bg-transparent text-charcoal hover:bg-gold/10')
+                .addClass('bg-forest text-ivory');
+            
+            var visibleCount = 0;
+            $('.cause-preview-item').each(function() {
+                var itemFilters = $(this).attr('data-filter') ? $(this).attr('data-filter').toString().toLowerCase() : '';
+                if (filter === 'all' || itemFilters.indexOf(filter) !== -1) {
+                    $(this).fadeIn(200);
+                    visibleCount++;
+                } else {
+                    $(this).hide();
+                }
+            });
+            
+            if (visibleCount === 0) {
+                $('#causesEmptyFilter').fadeIn(200);
+            } else {
+                $('#causesEmptyFilter').hide();
+            }
+        });
+    }
+});
+</script>

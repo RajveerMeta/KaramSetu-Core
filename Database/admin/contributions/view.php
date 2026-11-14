@@ -1,6 +1,7 @@
 
 <?php
 require_once __DIR__ . '/../../../includes/functions.php';
+requireAdmin();
 require_once __DIR__ . '/../../db_config.php';
 
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
@@ -23,7 +24,7 @@ $sql = "SELECT
             n.state AS ngo_state,
             n.verification_status AS ngo_status,
             ca.title AS cause_name,
-            ca.description AS cause_description
+            ca.detailed_description AS cause_description
         FROM contributions c
         LEFT JOIN users u ON c.user_id = u.id
         LEFT JOIN ngos n ON c.ngo_id = n.id

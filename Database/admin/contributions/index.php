@@ -1,6 +1,7 @@
 
 <?php
 require_once __DIR__ . '/../../../includes/functions.php';
+requireAdmin();
 require_once __DIR__ . '/../../db_config.php';
 
 $search = '';

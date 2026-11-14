@@ -1,6 +1,7 @@
 
 <?php
 require_once __DIR__ . '/../includes/functions.php';
+requireNgo();
 include __DIR__ . '/../Database/db_config.php';
 
 /* GET CAUSE ID */

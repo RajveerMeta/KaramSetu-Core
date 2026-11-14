@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/functions.php';
+requireAdmin();
 require_once __DIR__ . '/../Database/admin/dashboard_data.php';
 
 

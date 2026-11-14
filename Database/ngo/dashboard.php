@@ -1,6 +1,7 @@
 
 <?php
 require_once __DIR__ . '/../../includes/functions.php';
+requireNgo();
 require_once __DIR__ . '/../db_config.php';
 
 /* Get Logged-in NGO */

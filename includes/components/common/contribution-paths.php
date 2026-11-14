@@ -8,7 +8,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
             
             <!-- Path 01 -->
-            <a href="<?= baseUrl('?page=causes') ?>" class="group block relative overflow-hidden rounded-2xl border border-gold/20 bg-ivory p-6 transition-all hover:shadow-xl hover:border-gold hover:-translate-y-1">
+            <a href="<?= baseUrl('?page=causes&type=money') ?>" class="group block relative overflow-hidden rounded-2xl border border-gold/20 bg-ivory p-6 transition-all hover:shadow-xl hover:border-gold hover:-translate-y-1">
                 <div class="text-gold font-mono text-sm mb-4">01</div>
                 <h3 class="text-xl font-serif text-forest mb-2 group-hover:text-gold transition-colors">Give Money</h3>
                 <p class="text-sm text-charcoal-light font-light mb-6">Fund critical needs, medical emergencies, and ongoing NGO operations.</p>
@@ -19,7 +19,7 @@
             </a>
 
             <!-- Path 02 -->
-            <a href="<?= baseUrl('?page=causes') ?>" class="group block relative overflow-hidden rounded-2xl border border-gold/20 bg-ivory p-6 transition-all hover:shadow-xl hover:border-gold hover:-translate-y-1">
+            <a href="<?= baseUrl('?page=causes&type=food') ?>" class="group block relative overflow-hidden rounded-2xl border border-gold/20 bg-ivory p-6 transition-all hover:shadow-xl hover:border-gold hover:-translate-y-1">
                 <div class="text-gold font-mono text-sm mb-4">02</div>
                 <h3 class="text-xl font-serif text-forest mb-2 group-hover:text-gold transition-colors">Give Food</h3>
                 <p class="text-sm text-charcoal-light font-light mb-6">Provide raw rations or cooked meals to community kitchens and shelters.</p>
@@ -30,7 +30,7 @@
             </a>
 
             <!-- Path 03 -->
-            <a href="<?= baseUrl('?page=causes') ?>" class="group block relative overflow-hidden rounded-2xl border border-gold/20 bg-ivory p-6 transition-all hover:shadow-xl hover:border-gold hover:-translate-y-1">
+            <a href="<?= baseUrl('?page=causes&type=clothes') ?>" class="group block relative overflow-hidden rounded-2xl border border-gold/20 bg-ivory p-6 transition-all hover:shadow-xl hover:border-gold hover:-translate-y-1">
                 <div class="text-gold font-mono text-sm mb-4">03</div>
                 <h3 class="text-xl font-serif text-forest mb-2 group-hover:text-gold transition-colors">Give Clothes</h3>
                 <p class="text-sm text-charcoal-light font-light mb-6">Donate usable clothing for winter drives, children, and disaster relief.</p>
@@ -41,7 +41,7 @@
             </a>
 
             <!-- Path 04 -->
-            <a href="<?= baseUrl('?page=causes') ?>" class="group block relative overflow-hidden rounded-2xl border border-gold/20 bg-ivory p-6 transition-all hover:shadow-xl hover:border-gold hover:-translate-y-1">
+            <a href="<?= baseUrl('?page=causes&type=items') ?>" class="group block relative overflow-hidden rounded-2xl border border-gold/20 bg-ivory p-6 transition-all hover:shadow-xl hover:border-gold hover:-translate-y-1">
                 <div class="text-gold font-mono text-sm mb-4">04</div>
                 <h3 class="text-xl font-serif text-forest mb-2 group-hover:text-gold transition-colors">Useful Items</h3>
                 <p class="text-sm text-charcoal-light font-light mb-6">Provide books, stationary, blankets, or household essentials.</p>
@@ -52,7 +52,7 @@
             </a>
 
             <!-- Path 05 -->
-            <a href="#" class="group block relative overflow-hidden rounded-2xl border border-gold/20 bg-ivory p-6 transition-all hover:shadow-xl hover:border-gold hover:-translate-y-1">
+            <a href="<?= baseUrl('?page=events') ?>" class="group block relative overflow-hidden rounded-2xl border border-gold/20 bg-ivory p-6 transition-all hover:shadow-xl hover:border-gold hover:-translate-y-1">
                 <div class="text-gold font-mono text-sm mb-4">05</div>
                 <h3 class="text-xl font-serif text-forest mb-2 group-hover:text-gold transition-colors">Give Time</h3>
                 <p class="text-sm text-charcoal-light font-light mb-6">Volunteer for teaching, events, distribution, and community support.</p>
@@ -65,5 +65,3 @@
         </div>
     </div>
 </section>
-
-

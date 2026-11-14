@@ -44,7 +44,17 @@ if (isset($_POST["login"])) {
                 } elseif ($status == "suspended") {
                     $_SESSION["login_error"] = "Account is suspended!";
                 } elseif ($status == "pending") {
-                    $_SESSION["login_error"] = "Account is pending approval!";
+                    if ($row["role"] == "ngo") {
+                        $_SESSION["user_id"] = $row["id"];
+                        $_SESSION["user_name"] = $row["name"] ?? $row["fullname"] ?? "";
+                        $_SESSION["user_email"] = $row["email"];
+                        $_SESSION["user_role"] = $row["role"];
+
+                        header("Location: " . baseUrl("ngo/application-status.php"));
+                        exit();
+                    } else {
+                        $_SESSION["login_error"] = "Account is pending approval!";
+                    }
                 } else {
                     $_SESSION["login_error"] = "Account is not active!";
                 }

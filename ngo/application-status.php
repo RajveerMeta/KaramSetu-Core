@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/functions.php';
+requireNgo(true);
 
 
 $status = $_GET['status'] ?? 'pending';

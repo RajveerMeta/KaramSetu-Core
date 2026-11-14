@@ -21,15 +21,15 @@
                 <div id="heroContribSection" class="bg-white p-6 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gold/10 mb-8">
                     <p class="text-sm font-semibold text-charcoal mb-4 uppercase tracking-wider">I want to contribute</p>
                     <div class="flex flex-wrap gap-2 mb-6" id="heroContribButtons">
-                        <button data-id="money" class="hero-contrib-btn bg-forest text-ivory border-forest px-4 py-2 rounded-full border text-sm font-medium transition-colors">Money</button>
-                        <button data-id="food" class="hero-contrib-btn bg-ivory border-gold/30 text-charcoal hover:border-gold px-4 py-2 rounded-full border text-sm font-medium transition-colors">Food</button>
-                        <button data-id="clothes" class="hero-contrib-btn bg-ivory border-gold/30 text-charcoal hover:border-gold px-4 py-2 rounded-full border text-sm font-medium transition-colors">Clothes</button>
-                        <button data-id="items" class="hero-contrib-btn bg-ivory border-gold/30 text-charcoal hover:border-gold px-4 py-2 rounded-full border text-sm font-medium transition-colors">Useful Items</button>
-                        <button data-id="time" class="hero-contrib-btn bg-ivory border-gold/30 text-charcoal hover:border-gold px-4 py-2 rounded-full border text-sm font-medium transition-colors">Time</button>
+                        <button type="button" data-id="money" class="hero-contrib-btn bg-forest text-ivory border-forest px-4 py-2 rounded-full border text-sm font-medium transition-colors">Money</button>
+                        <button type="button" data-id="food" class="hero-contrib-btn bg-ivory border-gold/30 text-charcoal hover:border-gold px-4 py-2 rounded-full border text-sm font-medium transition-colors">Food</button>
+                        <button type="button" data-id="clothes" class="hero-contrib-btn bg-ivory border-gold/30 text-charcoal hover:border-gold px-4 py-2 rounded-full border text-sm font-medium transition-colors">Clothes</button>
+                        <button type="button" data-id="items" class="hero-contrib-btn bg-ivory border-gold/30 text-charcoal hover:border-gold px-4 py-2 rounded-full border text-sm font-medium transition-colors">Useful Items</button>
+                        <button type="button" data-id="time" class="hero-contrib-btn bg-ivory border-gold/30 text-charcoal hover:border-gold px-4 py-2 rounded-full border text-sm font-medium transition-colors">Time</button>
                     </div>
                     
                     <div class="flex flex-col sm:flex-row gap-4">
-                        <a href="<?= baseUrl('?page=causes') ?>" class="bg-forest text-ivory hover:bg-forest-dark px-8 py-3.5 rounded-full font-medium transition-all shadow-md w-full sm:w-auto text-center inline-block">
+                        <a id="heroFindHelpBtn" href="<?= baseUrl('?page=causes&type=money') ?>" class="bg-forest text-ivory hover:bg-forest-dark px-8 py-3.5 rounded-full font-medium transition-all shadow-md w-full sm:w-auto text-center inline-block">
                             Find a way to help
                         </a>
                         <a href="<?= baseUrl('?page=causes') ?>" class="bg-transparent border border-forest text-forest hover:bg-forest/5 px-8 py-3.5 rounded-full font-medium transition-all w-full sm:w-auto text-center inline-block">
@@ -66,11 +66,29 @@
                     </div>
                 </div>
                 
-               
             </div>
             
         </div>
     </div>
 </section>
 
-
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    if (window.jQuery) {
+        $('.hero-contrib-btn').on('click', function() {
+            var type = $(this).data('id');
+            $('.hero-contrib-btn')
+                .removeClass('bg-forest text-ivory border-forest')
+                .addClass('bg-ivory border-gold/30 text-charcoal hover:border-gold');
+            $(this)
+                .removeClass('bg-ivory border-gold/30 text-charcoal hover:border-gold')
+                .addClass('bg-forest text-ivory border-forest');
+            
+            var targetUrl = (type === 'time') 
+                ? '<?= baseUrl('?page=events') ?>' 
+                : '<?= baseUrl('?page=causes&type=') ?>' + encodeURIComponent(type);
+            $('#heroFindHelpBtn').attr('href', targetUrl);
+        });
+    }
+});
+</script>

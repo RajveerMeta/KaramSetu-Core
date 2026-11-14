@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/functions.php';
+requireNgo();
 require_once __DIR__ . '/../Database/db_config.php';
 
 ob_start();

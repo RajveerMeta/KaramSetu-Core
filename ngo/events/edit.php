@@ -1,6 +1,7 @@
 
 <?php
 require_once __DIR__ . '/../../includes/functions.php';
+requireNgo();
 require_once __DIR__ . '/../../Database/db_config.php';
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -166,6 +167,11 @@ if (isset($_SESSION['user_id'])) {
 
     $errorMsg = "Please login to edit your event!";
 
+}
+
+if (!$event) {
+    header("Location: " . baseUrl('ngo/events/index.php'));
+    exit;
 }
 $successMsg = '';
 

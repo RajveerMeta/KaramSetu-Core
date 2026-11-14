@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../../includes/functions.php';
+requireAdmin();
 require_once __DIR__ . '/../../Database/db_config.php';
 
 // Total users

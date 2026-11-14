@@ -1,3 +1,38 @@
+<?php
+$monthly_leaderboard_query = "
+    SELECT 
+        u.id,
+        u.name,
+        SUM(kt.points) AS total_karma,
+        (
+            SELECT COUNT(*) 
+            FROM contributions c 
+            WHERE c.user_id = u.id 
+            AND c.payment_status IN ('completed', 'not_applicable')
+            AND c.fulfillment_status != 'cancelled'
+            AND MONTH(c.created_at) = MONTH(CURRENT_DATE()) 
+            AND YEAR(c.created_at) = YEAR(CURRENT_DATE())
+        ) AS monthly_contributions
+    FROM karma_transactions kt
+    INNER JOIN users u ON u.id = kt.user_id
+    WHERE MONTH(kt.created_at) = MONTH(CURRENT_DATE())
+      AND YEAR(kt.created_at) = YEAR(CURRENT_DATE())
+      AND u.status = 'active'
+    GROUP BY u.id, u.name
+    HAVING total_karma > 0
+    ORDER BY total_karma DESC
+    LIMIT 3
+";
+
+$leaderboard_res = mysqli_query($con, $monthly_leaderboard_query);
+$leaders = [];
+if ($leaderboard_res) {
+    while ($lrow = mysqli_fetch_assoc($leaderboard_res)) {
+        $leaders[] = $lrow;
+    }
+}
+?>
+
 <section class="py-24 bg-ivory-dark border-y border-gold/10">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
@@ -48,62 +83,43 @@
                 </div>
                 
                 <div class="space-y-6">
-                    <!-- Rank 1 -->
-                    <div class="flex items-center justify-between group">
-                        <div class="flex items-center gap-4">
-                            <div class="w-8 text-center font-serif text-2xl text-gold font-bold">1</div>
-                            <div class="w-12 h-12 rounded-full bg-forest/10 flex items-center justify-center text-forest font-bold">A</div>
-                            <div>
-                                <p class="font-bold text-charcoal group-hover:text-forest transition-colors">Amit Patel</p>
-                                <p class="text-xs text-charcoal-light">12 Contributions</p>
+                    <?php if (!empty($leaders)): ?>
+                        <?php foreach ($leaders as $idx => $leader): ?>
+                            <?php
+                            $rank = $idx + 1;
+                            $init = strtoupper(substr(trim($leader['name'] ?? 'U'), 0, 1));
+                            $contrib_cnt = (int) $leader['monthly_contributions'];
+                            $contrib_label = $contrib_cnt . ' Contribution' . ($contrib_cnt === 1 ? '' : 's');
+                            $rank_color = ($rank === 1) ? 'text-gold font-bold text-2xl' : 'text-charcoal-light font-bold text-xl';
+                            ?>
+                            <div class="flex items-center justify-between group">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-8 text-center font-serif <?= $rank_color ?>"><?= $rank ?></div>
+                                    <div class="w-12 h-12 rounded-full bg-forest/10 flex items-center justify-center text-forest font-bold"><?= $init ?></div>
+                                    <div>
+                                        <p class="font-bold text-charcoal group-hover:text-forest transition-colors"><?= $leader['name'] ?></p>
+                                        <p class="text-xs text-charcoal-light"><?= $contrib_label ?></p>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <p class="font-serif text-xl text-forest"><?= number_format($leader['total_karma']) ?></p>
+                                    <p class="text-[10px] uppercase tracking-widest text-gold font-bold">Karma</p>
+                                </div>
                             </div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <div class="py-8 text-center bg-ivory rounded-2xl border border-gold/20 p-6">
+                            <p class="text-sm font-medium text-forest mb-1">No community scores for this month yet</p>
+                            <p class="text-xs text-charcoal-light">Make a contribution or volunteer to earn Karma points and appear on the monthly leaderboard!</p>
                         </div>
-                        <div class="text-right">
-                            <p class="font-serif text-xl text-forest">2,450</p>
-                            <p class="text-[10px] uppercase tracking-widest text-gold font-bold">Karma</p>
-                        </div>
-                    </div>
-
-                    <!-- Rank 2 -->
-                    <div class="flex items-center justify-between group">
-                        <div class="flex items-center gap-4">
-                            <div class="w-8 text-center font-serif text-xl text-charcoal-light font-bold">2</div>
-                            <div class="w-12 h-12 rounded-full bg-forest/10 flex items-center justify-center text-forest font-bold">S</div>
-                            <div>
-                                <p class="font-bold text-charcoal group-hover:text-forest transition-colors">Sneha Reddy</p>
-                                <p class="text-xs text-charcoal-light">8 Contributions</p>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <p class="font-serif text-xl text-forest">1,890</p>
-                            <p class="text-[10px] uppercase tracking-widest text-gold font-bold">Karma</p>
-                        </div>
-                    </div>
-
-                    <!-- Rank 3 -->
-                    <div class="flex items-center justify-between group">
-                        <div class="flex items-center gap-4">
-                            <div class="w-8 text-center font-serif text-xl text-charcoal-light font-bold">3</div>
-                            <div class="w-12 h-12 rounded-full bg-forest/10 flex items-center justify-center text-forest font-bold">R</div>
-                            <div>
-                                <p class="font-bold text-charcoal group-hover:text-forest transition-colors">Rahul Desai</p>
-                                <p class="text-xs text-charcoal-light">5 Contributions</p>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <p class="font-serif text-xl text-forest">1,200</p>
-                            <p class="text-[10px] uppercase tracking-widest text-gold font-bold">Karma</p>
-                        </div>
-                    </div>
+                    <?php endif; ?>
                 </div>
                 
-                <button class="w-full mt-8 py-3 rounded-full border border-forest text-forest hover:bg-forest hover:text-ivory transition-all font-medium text-sm">
+                <a href="<?= baseUrl('?page=leaderboard') ?>" class="block w-full text-center mt-8 py-3 rounded-full border border-forest text-forest hover:bg-forest hover:text-ivory transition-all font-medium text-sm">
                     View Full Leaderboard
-                </button>
+                </a>
             </div>
 
         </div>
     </div>
 </section>
-
-

@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/functions.php';
+requireAdmin();
 
 $content = '<div class="max-w-7xl mx-auto px-4 py-20 text-center">
     <h2 class="text-3xl font-serif font-bold text-forest mb-4">Page is not available yet.</h2>

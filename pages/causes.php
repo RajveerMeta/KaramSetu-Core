@@ -1,22 +1,212 @@
+
 <?php
 require_once __DIR__ . '/../Database/db_config.php';
 
-$causesQuery = "SELECT c.*, n.name AS ngo_name, n.city AS ngo_city, n.state AS ngo_state,
-                COALESCE((
-                    SELECT SUM(co.monetary_amount)
-                    FROM contributions co
-                    WHERE co.cause_id = c.id
-                      AND co.contribution_type = 'money'
-                      AND co.payment_status = 'completed'
-                ), 0) AS raised_amount,
-                GROUP_CONCAT(DISTINCT cat.contribution_type SEPARATOR ',') AS accepted_types_str
+/* GET FILTER VALUES */
+
+$search = isset($_GET['search']) ? trim($_GET['search']) : '';
+$type = isset($_GET['type']) ? $_GET['type'] : 'all';
+$location = isset($_GET['location']) ? $_GET['location'] : 'all';
+$sort = isset($_GET['sort']) ? $_GET['sort'] : 'recent';
+
+/* BOOKS ARE STORED AS ITEMS */
+
+if ($type == 'books') {
+    $type = 'items';
+}
+
+/* GET LOCATIONS */
+
+$locationsQuery = "SELECT DISTINCT n.city
+                   FROM ngos n
+                   INNER JOIN causes c ON c.ngo_id = n.id
+                   WHERE c.status = 'active'
+                   AND n.verification_status = 'approved'
+                   AND n.city IS NOT NULL
+                   AND n.city != ''
+                   ORDER BY n.city ASC";
+
+$locationsResult = mysqli_query($con, $locationsQuery);
+
+
+/* BUILD CAUSE FILTERS */
+
+$where = "WHERE c.status = 'active'
+          AND n.verification_status = 'approved'";
+
+if ($search != '') {
+    $searchValue = mysqli_real_escape_string($con, $search);
+
+    $where .= " AND (
+        c.title LIKE '%$searchValue%'
+        OR c.short_description LIKE '%$searchValue%'
+        OR c.detailed_description LIKE '%$searchValue%'
+        OR n.name LIKE '%$searchValue%'
+    )";
+}
+
+if ($location != 'all') {
+    $locationValue = mysqli_real_escape_string($con, $location);
+    $where .= " AND n.city = '$locationValue'";
+}
+
+if ($type != 'all') {
+    $typeValue = mysqli_real_escape_string($con, $type);
+
+    $where .= " AND EXISTS (
+        SELECT 1
+        FROM cause_accepted_types cat_filter
+        WHERE cat_filter.cause_id = c.id
+        AND cat_filter.contribution_type = '$typeValue'
+    )";
+}
+
+
+/* SORT CAUSES */
+
+$orderBy = "c.created_at DESC";
+
+if ($sort == 'urgent') {
+    $orderBy = "c.end_date ASC";
+} elseif ($sort == 'recent') {
+    $orderBy = "c.created_at DESC";
+}
+
+
+/* GET CAUSES */
+
+$causesQuery = "SELECT
+                    c.*,
+                    n.name AS ngo_name,
+                    n.city AS ngo_city,
+                    n.state AS ngo_state,
+                    n.verification_status,
+
+                    COALESCE((
+                        SELECT SUM(co.monetary_amount)
+                        FROM contributions co
+                        WHERE co.cause_id = c.id
+                        AND co.contribution_type = 'money'
+                        AND co.payment_status = 'completed'
+                    ), 0) AS raised_amount,
+
+                    (
+                        SELECT GROUP_CONCAT(DISTINCT cat.contribution_type SEPARATOR ',')
+                        FROM cause_accepted_types cat
+                        WHERE cat.cause_id = c.id
+                    ) AS accepted_types_str
+
                 FROM causes c
                 INNER JOIN ngos n ON n.id = c.ngo_id
-                LEFT JOIN cause_accepted_types cat ON cat.cause_id = c.id
-                WHERE c.status = 'active'
-                GROUP BY c.id
-                ORDER BY c.created_at DESC";
+                $where
+                ORDER BY $orderBy";
+
 $causesResult = mysqli_query($con, $causesQuery);
+
+
+/* GET FEATURED CAUSE USING SAME FILTERS */
+
+$featuredQuery = "SELECT
+                    c.*,
+                    n.name AS ngo_name,
+                    n.city AS ngo_city,
+                    n.state AS ngo_state,
+                    n.verification_status,
+
+                    COALESCE((
+                        SELECT SUM(co.monetary_amount)
+                        FROM contributions co
+                        WHERE co.cause_id = c.id
+                        AND co.contribution_type = 'money'
+                        AND co.payment_status = 'completed'
+                    ), 0) AS raised_amount,
+
+                    (
+                        SELECT GROUP_CONCAT(DISTINCT cat.contribution_type SEPARATOR ',')
+                        FROM cause_accepted_types cat
+                        WHERE cat.cause_id = c.id
+                    ) AS accepted_types_str
+
+                FROM causes c
+                INNER JOIN ngos n ON n.id = c.ngo_id
+                $where
+                ORDER BY c.end_date ASC
+                LIMIT 1";
+
+$featuredResult = mysqli_query($con, $featuredQuery);
+$featuredCause = $featuredResult ? mysqli_fetch_assoc($featuredResult) : null;
+
+
+/* FEATURED CAUSE VALUES */
+
+$featuredId = 0;
+$featuredTitle = '';
+$featuredImage = '';
+$featuredNgo = '';
+$featuredLocation = '';
+$featuredDescription = '';
+$featuredRaised = 0;
+$featuredTarget = 0;
+$featuredProgress = 0;
+$featuredAccepts = [];
+
+if ($featuredCause) {
+    $featuredId = $featuredCause['id'];
+    $featuredTitle = $featuredCause['title'];
+    $featuredImage = $featuredCause['cause_image'];
+    $featuredNgo = $featuredCause['ngo_name'];
+
+    $featuredLocation = $featuredCause['ngo_city'] . ', ' . $featuredCause['ngo_state'];
+
+    $featuredDescription = !empty($featuredCause['short_description'])
+        ? $featuredCause['short_description']
+        : 'Community support';
+
+    $featuredRaised = (float) $featuredCause['raised_amount'];
+    $featuredTarget = (float) $featuredCause['target_amount'];
+
+    $featuredProgress = $featuredTarget > 0
+        ? min(100, round(($featuredRaised / $featuredTarget) * 100))
+        : 0;
+
+    $featuredAccepts = !empty($featuredCause['accepted_types_str'])
+        ? explode(',', $featuredCause['accepted_types_str'])
+        : [];
+}
+
+
+/* CONTRIBUTION MATCHER COUNTS */
+
+$matcherCounts = [
+    'money' => 0,
+    'food' => 0,
+    'clothes' => 0,
+    'items' => 0,
+    'time' => 0
+];
+
+$matcherQuery = "SELECT
+                    cat.contribution_type,
+                    COUNT(DISTINCT c.id) AS total_causes
+                 FROM cause_accepted_types cat
+                 INNER JOIN causes c ON c.id = cat.cause_id
+                 INNER JOIN ngos n ON n.id = c.ngo_id
+                 WHERE c.status = 'active'
+                 AND n.verification_status = 'approved'
+                 GROUP BY cat.contribution_type";
+
+$matcherResult = mysqli_query($con, $matcherQuery);
+
+if ($matcherResult) {
+    while ($matcherRow = mysqli_fetch_assoc($matcherResult)) {
+        $matcherCounts[$matcherRow['contribution_type']] = (int) $matcherRow['total_causes'];
+    }
+}
+
+/* BOOKS USE THE ITEMS CATEGORY */
+
+$matcherCounts['books'] = $matcherCounts['items'];
+
 ?>
 <!-- 01 - Page Introduction -->
     <section class="relative pt-16 pb-12 overflow-hidden bg-ivory">

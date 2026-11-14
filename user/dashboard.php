@@ -1,39 +1,203 @@
+
 <?php
 require_once __DIR__ . '/../includes/functions.php';
+requireUser();
+require_once __DIR__ . '/../Database/db_config.php';
 ob_start();
-?>
 
+/* GET LOGGED-IN USER */
 
+$userId = isset($_SESSION['user_id']) ? (int) $_SESSION['user_id'] : 0;
 
-<?php
-    $user = (object)[
-        'name' => 'Rajveer',
-        'email' => 'rajveer@example.com',
-        'member_since' => 'August 2026',
-        'total_contributions' => '₹12,500',
-        'contributions_count' => 8,
-        'karma_points' => '1,280',
-        'events_joined' => 3,
-        'events_upcoming' => 2,
-        'volunteer_activities' => 5,
-        'volunteer_hours' => 12,
-        'next_reward' => '1,500 points',
-        'next_reward_name' => 'Silver Member',
-        'progress_percentage' => 85,
-        'rank' => 24,
-        'next_activity' => 'Community Food Distribution'
-    ];
+if ($userId <= 0) {
+    header('Location: ' . baseUrl('auth/login.php'));
+    exit;
+}
 
-    $contributions = [
-        (object)['id' => 1, 'title' => 'Education Support', 'type' => 'Donation', 'amount' => '₹2,000', 'date' => '28 Aug 2026', 'status' => 'Completed'],
-        (object)['id' => 2, 'title' => 'Food Distribution Drive', 'type' => 'Food', 'amount' => '—', 'date' => '25 Aug 2026', 'status' => 'Completed'],
-        (object)['id' => 3, 'title' => 'Community Clothing Drive', 'type' => 'Clothes', 'amount' => '—', 'date' => '20 Aug 2026', 'status' => 'Completed'],
-    ];
+/* GET USER DETAILS */
 
-    $upcomingEvents = [
-        (object)['id' => 101, 'name' => 'Charity Music Evening', 'date' => '15 Sep 2026', 'location' => 'Ahmedabad', 'ticket' => '₹500', 'status' => 'Booked'],
-        (object)['id' => 102, 'name' => 'Community Food Fundraiser', 'date' => '22 Sep 2026', 'location' => 'Ahmedabad', 'ticket' => '₹250', 'status' => 'Booked'],
-    ];
+$sql = "SELECT name, email, created_at
+        FROM users
+        WHERE id = $userId
+        AND role = 'user'
+        LIMIT 1";
+
+$result = mysqli_query($con, $sql);
+$userData = mysqli_fetch_assoc($result);
+
+if (!$userData) {
+    header('Location: ' . baseUrl('auth/logout.php'));
+    exit;
+}
+
+/* GET CONTRIBUTION SUMMARY */
+
+$sql = "SELECT
+            COUNT(*) AS total_count,
+            COALESCE(SUM(
+                CASE
+                    WHEN contribution_type = 'money'
+                    AND payment_status = 'completed'
+                    THEN monetary_amount
+                    ELSE 0
+                END
+            ), 0) AS total_amount
+        FROM contributions
+        WHERE user_id = $userId
+        AND payment_status IN ('completed', 'not_applicable')
+        AND fulfillment_status != 'cancelled'";
+
+$result = mysqli_query($con, $sql);
+$contributionSummary = mysqli_fetch_assoc($result);
+
+/* GET KARMA POINTS */
+
+$sql = "SELECT COALESCE(SUM(points), 0) AS total_points
+        FROM karma_transactions
+        WHERE user_id = $userId";
+
+$result = mysqli_query($con, $sql);
+$karmaData = mysqli_fetch_assoc($result);
+
+$karmaPoints = (int) $karmaData['total_points'];
+
+/* GET EVENTS JOINED */
+
+$sql = "SELECT COUNT(DISTINCT event_id) AS total_events
+        FROM event_bookings
+        WHERE user_id = $userId
+        AND booking_status IN ('confirmed', 'attended')";
+
+$result = mysqli_query($con, $sql);
+$eventsData = mysqli_fetch_assoc($result);
+
+/* GET UPCOMING EVENTS COUNT */
+
+$sql = "SELECT COUNT(DISTINCT eb.event_id) AS upcoming_events
+        FROM event_bookings eb
+        INNER JOIN events e ON eb.event_id = e.id
+        WHERE eb.user_id = $userId
+        AND eb.booking_status = 'confirmed'
+        AND e.status = 'upcoming'
+        AND e.event_date >= CURDATE()";
+
+$result = mysqli_query($con, $sql);
+$upcomingData = mysqli_fetch_assoc($result);
+
+/* GET VOLUNTEER ACTIVITIES */
+
+$sql = "SELECT COUNT(*) AS total_activities
+        FROM karma_transactions
+        WHERE user_id = $userId
+        AND source_type = 'volunteering'";
+
+$result = mysqli_query($con, $sql);
+$volunteerData = mysqli_fetch_assoc($result);
+
+/* GET LEADERBOARD RANK */
+
+$sql = "SELECT COUNT(*) + 1 AS user_rank
+        FROM users u
+        LEFT JOIN (
+            SELECT user_id, SUM(points) AS total_points
+            FROM karma_transactions
+            GROUP BY user_id
+        ) k ON u.id = k.user_id
+        WHERE u.role = 'user'
+        AND u.status = 'active'
+        AND COALESCE(k.total_points, 0) > $karmaPoints";
+
+$result = mysqli_query($con, $sql);
+$rankData = mysqli_fetch_assoc($result);
+
+/* PREPARE USER DATA */
+
+$nextRewardPoints = 1500;
+
+$user = (object)[
+    'name' => $userData['name'],
+    'email' => $userData['email'],
+    'member_since' => date('F Y', strtotime($userData['created_at'])),
+
+    'total_contributions' => '₹' . number_format($contributionSummary['total_amount'], 0),
+    'contributions_count' => (int) $contributionSummary['total_count'],
+
+    'karma_points' => number_format($karmaPoints),
+
+    'events_joined' => (int) $eventsData['total_events'],
+    'events_upcoming' => (int) $upcomingData['upcoming_events'],
+
+    'volunteer_activities' => (int) $volunteerData['total_activities'],
+    'volunteer_hours' => '—',
+
+    'next_reward' => number_format($nextRewardPoints) . ' points',
+    'next_reward_name' => 'Silver Member',
+    'progress_percentage' => min(100, round(($karmaPoints / $nextRewardPoints) * 100)),
+
+    'rank' => (int) $rankData['user_rank'],
+
+    'next_activity' => '—'
+];
+
+/* GET RECENT CONTRIBUTIONS */
+
+$contributions = [];
+
+$sql = "SELECT
+            c.id,
+            COALESCE(ca.title, n.name, 'Community Contribution') AS title,
+            c.contribution_type AS type,
+            CASE
+                WHEN c.contribution_type = 'money'
+                THEN CONCAT('₹', FORMAT(c.monetary_amount, 0))
+                ELSE '—'
+            END AS amount,
+            DATE_FORMAT(c.created_at, '%d %b %Y') AS date,
+            CASE
+                WHEN c.payment_status = 'failed' THEN 'Failed'
+                WHEN c.payment_status = 'pending' THEN 'Pending'
+                WHEN c.fulfillment_status = 'cancelled' THEN 'Cancelled'
+                WHEN c.fulfillment_status = 'received' THEN 'Received'
+                ELSE 'Completed'
+            END AS status
+        FROM contributions c
+        LEFT JOIN causes ca ON c.cause_id = ca.id
+        LEFT JOIN ngos n ON c.ngo_id = n.id
+        WHERE c.user_id = $userId
+        ORDER BY c.created_at DESC
+        LIMIT 3";
+
+$result = mysqli_query($con, $sql);
+
+while ($row = mysqli_fetch_object($result)) {
+    $contributions[] = $row;
+}
+
+/* GET UPCOMING EVENTS */
+
+$upcomingEvents = [];
+
+$sql = "SELECT
+            e.id,
+            e.title AS name,
+            DATE_FORMAT(e.event_date, '%d %b %Y') AS date,
+            e.location,
+            CONCAT('₹', FORMAT(eb.total_amount, 0)) AS ticket,
+            'Booked' AS status
+        FROM event_bookings eb
+        INNER JOIN events e ON eb.event_id = e.id
+        WHERE eb.user_id = $userId
+        AND eb.booking_status = 'confirmed'
+        AND e.status = 'upcoming'
+        AND e.event_date >= CURDATE()
+        ORDER BY e.event_date ASC
+        LIMIT 4";
+
+$result = mysqli_query($con, $sql);
+
+while ($row = mysqli_fetch_object($result)) {
+    $upcomingEvents[] = $row;
+}
 ?>
 
 <div class="bg-ivory/40 min-h-screen py-10 lg:py-16">
@@ -260,7 +424,7 @@ ob_start();
                         </div>
                         <div class="flex flex-col md:flex-row justify-between items-center bg-ivory/50 px-4 py-3 rounded-xl">
                             <span class="text-sm font-medium text-charcoal-light">Hours Contributed</span>
-                            <span class="text-base font-bold text-forest"><?= e($user->volunteer_hours) ?>h</span>
+                            <span class="text-base font-bold text-forest"><?= e($user->volunteer_hours) ?></span>
                         </div>
                     </div>
                     

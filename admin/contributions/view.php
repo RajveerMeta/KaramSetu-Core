@@ -1,5 +1,7 @@
 
 <?php
+require_once __DIR__ . '/../../includes/functions.php';
+requireAdmin();
 require_once __DIR__ . '/../../DataBase/admin/contributions/view.php';
 
 ob_start();

@@ -18,15 +18,13 @@
         </p>
         
         <div class="flex flex-col sm:flex-row items-center justify-center gap-6">
-            <button class="bg-gold text-forest hover:bg-white px-8 py-4 rounded-full font-bold transition-colors w-full sm:w-auto shadow-xl">
+            <a href="<?= baseUrl('?page=causes') ?>" class="bg-gold text-forest hover:bg-white px-8 py-4 rounded-full font-bold transition-colors w-full sm:w-auto shadow-xl inline-block text-center">
                 Start Helping
-            </button>
-            <button class="bg-transparent border border-white/30 text-white hover:bg-white/10 hover:border-white px-8 py-4 rounded-full font-medium transition-all w-full sm:w-auto">
+            </a>
+            <a href="<?= baseUrl('?page=causes') ?>" class="bg-transparent border border-white/30 text-white hover:bg-white/10 hover:border-white px-8 py-4 rounded-full font-medium transition-all w-full sm:w-auto inline-block text-center">
                 Find a Cause
-            </button>
+            </a>
         </div>
 
     </div>
 </section>
-
-
