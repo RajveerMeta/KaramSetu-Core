@@ -150,6 +150,7 @@ ob_start();
                                 <th class="px-6 py-3 font-medium">Email</th>
                                 <th class="px-6 py-3 font-medium">Registered On</th>
                                 <th class="px-6 py-3 font-medium">Status</th>
+                                <th class="px-6 py-3 font-medium text-right">Action</th>
                             </tr>
                         </thead>
 
@@ -180,11 +181,25 @@ ob_start();
                                                 <?= e(ucfirst($p['booking_status'])) ?>
                                             </span>
                                         </td>
+                                        <td class="px-6 py-4 text-sm text-right">
+                                            <?php if ($p['booking_status'] === 'confirmed'): ?>
+                                                <form method="POST" class="inline">
+                                                    <input type="hidden" name="mark_attended_booking_id" value="<?= (int)$p['id'] ?>">
+                                                    <button type="submit" class="px-2.5 py-1 bg-forest text-white hover:bg-forest-dark text-xs font-bold rounded-lg transition-colors shadow-sm whitespace-nowrap">
+                                                        Mark Attended
+                                                    </button>
+                                                </form>
+                                            <?php elseif ($p['booking_status'] === 'attended'): ?>
+                                                <span class="text-xs text-forest font-bold">+50 Karma</span>
+                                            <?php else: ?>
+                                                <span class="text-xs text-charcoal-light">—</span>
+                                            <?php endif; ?>
+                                        </td>
                                     </tr>
                                 <?php endwhile; ?>
                             <?php else: ?>
                                 <tr>
-                                    <td colspan="4" class="px-6 py-8 text-center text-sm text-charcoal-light">
+                                    <td colspan="5" class="px-6 py-8 text-center text-sm text-charcoal-light">
                                         No participants have registered for this event.
                                     </td>
                                 </tr>
@@ -217,6 +232,17 @@ ob_start();
                                 <div class="text-xs text-charcoal-light">
                                     Registered: <?= e(date('d M Y', strtotime($p['created_at']))) ?>
                                 </div>
+
+                                <?php if ($p['booking_status'] === 'confirmed'): ?>
+                                    <div class="pt-1">
+                                        <form method="POST">
+                                            <input type="hidden" name="mark_attended_booking_id" value="<?= (int)$p['id'] ?>">
+                                            <button type="submit" class="px-2.5 py-1 bg-forest text-white hover:bg-forest-dark text-xs font-bold rounded-lg transition-colors shadow-sm">
+                                                Mark Attended
+                                            </button>
+                                        </form>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                         <?php endwhile; ?>
                     <?php else: ?>

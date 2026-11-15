@@ -1,89 +1,136 @@
 <?php
 require_once __DIR__ . '/../includes/functions.php';
 requireUser();
+require_once __DIR__ . '/../Database/db_config.php';
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+$userId = (int)($_SESSION['user_id'] ?? 0);
+
+// Handle cancellation
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['cancel_activity_id'])) {
+    $cancelId = (int)$_POST['cancel_activity_id'];
+    if ($cancelId > 0 && $userId > 0) {
+        $stmtCancel = mysqli_prepare($con, "UPDATE volunteer_activities SET status = 'cancelled', updated_at = NOW() WHERE id = ? AND user_id = ? AND status = 'registered'");
+        mysqli_stmt_bind_param($stmtCancel, "ii", $cancelId, $userId);
+        mysqli_stmt_execute($stmtCancel);
+    }
+    header("Location: " . baseUrl('user/volunteer-activities.php'));
+    exit;
+}
+
+// Filters
+$selectedStatus = isset($_GET['status']) ? strtolower(trim($_GET['status'])) : 'all';
+if (!in_array($selectedStatus, ['all', 'upcoming', 'completed'])) {
+    $selectedStatus = 'all';
+}
+$selectedNgo = isset($_GET['ngo']) ? (int)$_GET['ngo'] : 0;
+
+// Summary stats
+$completedCount = 0;
+$upcomingCount = 0;
+$totalHours = 0.0;
+$totalNgos = 0;
+
+if ($userId > 0) {
+    $statsSql = "SELECT 
+                    COUNT(CASE WHEN status = 'completed' THEN 1 END) AS completed_count,
+                    COUNT(CASE WHEN status = 'registered' THEN 1 END) AS upcoming_count,
+                    COALESCE(SUM(CASE WHEN status = 'completed' THEN hours_completed ELSE 0 END), 0) AS total_hours,
+                    COUNT(DISTINCT ngo_id) AS total_ngos
+                 FROM volunteer_activities
+                 WHERE user_id = ?";
+    $stmtStats = mysqli_prepare($con, $statsSql);
+    mysqli_stmt_bind_param($stmtStats, "i", $userId);
+    mysqli_stmt_execute($stmtStats);
+    $statsRes = mysqli_stmt_get_result($stmtStats);
+    if ($statsRes) {
+        $statsRow = mysqli_fetch_assoc($statsRes);
+        $completedCount = (int)($statsRow['completed_count'] ?? 0);
+        $upcomingCount = (int)($statsRow['upcoming_count'] ?? 0);
+        $totalHours = (float)($statsRow['total_hours'] ?? 0);
+        $totalNgos = (int)($statsRow['total_ngos'] ?? 0);
+    }
+}
+
+// Fetch user's distinct NGOs for filter dropdown
+$filterNgos = [];
+if ($userId > 0) {
+    $ngosSql = "SELECT DISTINCT n.id, n.name 
+                FROM volunteer_activities va
+                INNER JOIN ngos n ON n.id = va.ngo_id
+                WHERE va.user_id = ?
+                ORDER BY n.name ASC";
+    $stmtNgos = mysqli_prepare($con, $ngosSql);
+    mysqli_stmt_bind_param($stmtNgos, "i", $userId);
+    mysqli_stmt_execute($stmtNgos);
+    $ngosRes = mysqli_stmt_get_result($stmtNgos);
+    if ($ngosRes) {
+        while ($nRow = mysqli_fetch_assoc($ngosRes)) {
+            $filterNgos[] = $nRow;
+        }
+    }
+}
+
+// Fetch activities
+$upcomingActivities = [];
+$completedActivities = [];
+$allActivities = [];
+
+if ($userId > 0) {
+    $actSql = "SELECT va.*, n.name AS organization_name
+               FROM volunteer_activities va
+               INNER JOIN ngos n ON n.id = va.ngo_id
+               WHERE va.user_id = ?";
+    
+    if ($selectedNgo > 0) {
+        $actSql .= " AND va.ngo_id = " . (int)$selectedNgo;
+    }
+
+    $actSql .= " ORDER BY va.activity_date DESC, va.created_at DESC";
+
+    $stmtAct = mysqli_prepare($con, $actSql);
+    mysqli_stmt_bind_param($stmtAct, "i", $userId);
+    mysqli_stmt_execute($stmtAct);
+    $resAct = mysqli_stmt_get_result($stmtAct);
+
+    if ($resAct) {
+        while ($row = mysqli_fetch_assoc($resAct)) {
+            $timeStr = null;
+            if (!empty($row['start_time'])) {
+                $timeStr = date('h:i A', strtotime($row['start_time']));
+                if (!empty($row['end_time'])) {
+                    $timeStr .= ' – ' . date('h:i A', strtotime($row['end_time']));
+                }
+            }
+
+            $item = (object)[
+                'id' => (int)$row['id'],
+                'event_id' => !empty($row['event_id']) ? (int)$row['event_id'] : null,
+                'organization' => $row['organization_name'],
+                'title' => $row['title'],
+                'date' => date('d F Y', strtotime($row['activity_date'])),
+                'time' => $timeStr,
+                'location' => $row['location'],
+                'role' => $row['volunteer_role'],
+                'hours' => (float)$row['hours_completed'],
+                'status' => ucfirst($row['status']),
+                'karma_points' => (int)$row['karma_points_awarded']
+            ];
+
+            $allActivities[] = $item;
+            if ($row['status'] === 'registered') {
+                $upcomingActivities[] = $item;
+            } elseif ($row['status'] === 'completed') {
+                $completedActivities[] = $item;
+            }
+        }
+    }
+}
+
 ob_start();
-?>
-
-
-
-<?php
-    $volunteerActivities = [
-        (object)[
-            'id' => 1,
-            'event_id' => null,
-            'organization' => 'Helping Hands NGO',
-            'title' => 'Community Food Distribution',
-            'date' => '12 September 2026',
-            'time' => '10:00 AM – 2:00 PM',
-            'location' => 'Ahmedabad',
-            'role' => 'Food Distribution Volunteer',
-            'hours' => 4,
-            'status' => 'Registered',
-        ],
-        (object)[
-            'id' => 2,
-            'event_id' => null,
-            'organization' => 'Green Community Initiative',
-            'title' => 'Community Clean-Up Drive',
-            'date' => '20 September 2026',
-            'time' => '7:00 AM – 11:00 AM',
-            'location' => 'Ahmedabad',
-            'role' => 'Community Volunteer',
-            'hours' => 4,
-            'status' => 'Registered',
-        ],
-        (object)[
-            'id' => 3,
-            'event_id' => null,
-            'organization' => 'Hope Foundation',
-            'title' => 'Community Clothing Drive',
-            'date' => '18 August 2026',
-            'time' => null,
-            'location' => 'Ahmedabad',
-            'role' => 'Distribution Volunteer',
-            'hours' => 3,
-            'status' => 'Completed',
-        ],
-        (object)[
-            'id' => 4,
-            'event_id' => null,
-            'organization' => 'Smile Foundation',
-            'title' => 'Education Support Workshop',
-            'date' => '10 August 2026',
-            'time' => null,
-            'location' => 'Ahmedabad',
-            'role' => 'Event Volunteer',
-            'hours' => 4,
-            'status' => 'Completed',
-        ],
-        (object)[
-            'id' => 5,
-            'event_id' => null,
-            'organization' => 'Helping Hands NGO',
-            'title' => 'Community Meal Service',
-            'date' => '02 August 2026',
-            'time' => null,
-            'location' => 'Ahmedabad',
-            'role' => 'Food Service Volunteer',
-            'hours' => 2,
-            'status' => 'Completed',
-        ],
-        (object)[
-            'id' => 6,
-            'event_id' => null,
-            'organization' => 'Community Relief NGO',
-            'title' => 'Donation Collection Drive',
-            'date' => '25 July 2026',
-            'time' => null,
-            'location' => 'Ahmedabad',
-            'role' => 'Collection Volunteer',
-            'hours' => 3,
-            'status' => 'Completed',
-        ],
-    ];
-
-    $upcomingActivities = array_filter($volunteerActivities, function($a) { return $a->status === 'Registered'; });
-    $completedActivities = array_filter($volunteerActivities, function($a) { return $a->status === 'Completed'; });
 ?>
 
 <div class="bg-ivory/40 min-h-screen py-10 lg:py-16">
@@ -100,40 +147,46 @@ ob_start();
             <!-- Activities Completed -->
             <div class="bg-white rounded-2xl p-4 md:p-8 shadow-sm border border-gold/20 flex flex-col justify-center transition-shadow hover:shadow-md">
                 <p class="text-sm font-bold uppercase tracking-wide text-charcoal-light mb-1">Activities Completed</p>
-                <p class="text-3xl md:text-4xl font-serif font-bold text-forest mb-1">5</p>
-                <p class="text-xs font-medium text-charcoal-light">Held across 4 organizations</p>
+                <p class="text-3xl md:text-4xl font-serif font-bold text-forest mb-1"><?= $completedCount ?></p>
+                <p class="text-xs font-medium text-charcoal-light">Held across <?= $totalNgos ?> <?= $totalNgos === 1 ? 'organization' : 'organizations' ?></p>
             </div>
             
             <!-- Hours Contributed -->
             <div class="bg-white rounded-2xl p-4 md:p-8 shadow-sm border border-gold/20 flex flex-col justify-center transition-shadow hover:shadow-md">
                 <p class="text-sm font-bold uppercase tracking-wide text-charcoal-light mb-1">Hours Contributed</p>
-                <p class="text-3xl md:text-4xl font-serif font-bold text-forest mb-1">12h</p>
+                <p class="text-3xl md:text-4xl font-serif font-bold text-forest mb-1"><?= $totalHours ?>h</p>
                 <p class="text-xs font-medium text-charcoal-light">Time given to the community</p>
             </div>
             
             <!-- Upcoming Activities -->
             <div class="bg-white rounded-2xl p-4 md:p-8 shadow-sm border border-gold/20 flex flex-col justify-center transition-shadow hover:shadow-md">
                 <p class="text-sm font-bold uppercase tracking-wide text-charcoal-light mb-1">Upcoming Activities</p>
-                <p class="text-3xl md:text-4xl font-serif font-bold text-forest mb-1">2</p>
+                <p class="text-3xl md:text-4xl font-serif font-bold text-forest mb-1"><?= $upcomingCount ?></p>
                 <p class="text-xs font-medium text-charcoal-light">Ready to make an impact</p>
             </div>
         </div>
 
-        <!-- Filters (Static Design) -->
+        <!-- Filters -->
         <div class="flex flex-wrap items-center gap-3 mb-8 pb-4 border-b border-charcoal/5">
-            <a href="#" class="px-4 py-2 rounded-full text-sm font-bold bg-forest text-white shadow-sm">All Activities</a>
-            <a href="#" class="px-4 py-2 rounded-full text-sm font-bold bg-white text-charcoal border border-charcoal/10 hover:bg-ivory transition-colors shadow-sm">Upcoming</a>
-            <a href="#" class="px-4 py-2 rounded-full text-sm font-bold bg-white text-charcoal border border-charcoal/10 hover:bg-ivory transition-colors shadow-sm">Completed</a>
+            <?php
+            $ngoParam = $selectedNgo > 0 ? '&ngo=' . $selectedNgo : '';
+            ?>
+            <a href="<?= baseUrl('user/volunteer-activities.php?status=all' . $ngoParam) ?>" class="px-4 py-2 rounded-full text-sm font-bold <?= $selectedStatus === 'all' ? 'bg-forest text-white' : 'bg-white text-charcoal border border-charcoal/10 hover:bg-ivory' ?> transition-colors shadow-sm">All Activities</a>
+            <a href="<?= baseUrl('user/volunteer-activities.php?status=upcoming' . $ngoParam) ?>" class="px-4 py-2 rounded-full text-sm font-bold <?= $selectedStatus === 'upcoming' ? 'bg-forest text-white' : 'bg-white text-charcoal border border-charcoal/10 hover:bg-ivory' ?> transition-colors shadow-sm">Upcoming</a>
+            <a href="<?= baseUrl('user/volunteer-activities.php?status=completed' . $ngoParam) ?>" class="px-4 py-2 rounded-full text-sm font-bold <?= $selectedStatus === 'completed' ? 'bg-forest text-white' : 'bg-white text-charcoal border border-charcoal/10 hover:bg-ivory' ?> transition-colors shadow-sm">Completed</a>
             
             <div class="ml-auto mt-2 sm:mt-0 w-full sm:w-auto">
-                <select class="w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium bg-white text-charcoal border border-charcoal/10 focus:outline-none focus:border-forest/50 shadow-sm">
-                    <option>All Organizations</option>
-                    <option>Helping Hands NGO</option>
-                    <option>Green Community Initiative</option>
-                    <option>Hope Foundation</option>
-                    <option>Smile Foundation</option>
-                    <option>Community Relief NGO</option>
-                </select>
+                <form method="GET" action="<?= baseUrl('user/volunteer-activities.php') ?>" class="inline-block w-full sm:w-auto">
+                    <input type="hidden" name="status" value="<?= e($selectedStatus) ?>">
+                    <select name="ngo" onchange="this.form.submit()" class="w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium bg-white text-charcoal border border-charcoal/10 focus:outline-none focus:border-forest/50 shadow-sm">
+                        <option value="0">All Organizations</option>
+                        <?php foreach ($filterNgos as $fNgo): ?>
+                            <option value="<?= (int)$fNgo['id'] ?>" <?= $selectedNgo === (int)$fNgo['id'] ? 'selected' : '' ?>>
+                                <?= e($fNgo['name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </form>
             </div>
         </div>
 
@@ -145,6 +198,8 @@ ob_start();
             $statusColor = 'bg-amber-50 text-amber-700 border-amber-200';
         } elseif ($activity->status === 'Completed') {
             $statusColor = 'bg-green-50 text-forest border-green-200';
+        } elseif ($activity->status === 'Cancelled') {
+            $statusColor = 'bg-red-50 text-red-700 border-red-200';
         }
 
         ob_start();
@@ -155,16 +210,16 @@ ob_start();
         <div class="flex flex-col md:flex-row justify-between items-start mb-4">
             <div>
                 <h3 class="font-bold text-charcoal text-lg mb-1">
-                    <?= htmlspecialchars($activity->title) ?>
+                    <?= e($activity->title) ?>
                 </h3>
 
                 <p class="text-sm font-medium text-forest">
-                    <?= htmlspecialchars($activity->organization) ?>
+                    <?= e($activity->organization) ?>
                 </p>
             </div>
 
             <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border <?= $statusColor ?>">
-                <?= htmlspecialchars($activity->status) ?>
+                <?= e($activity->status) ?>
             </span>
         </div>
 
@@ -172,7 +227,7 @@ ob_start();
             <div class="flex flex-col md:flex-row items-center text-sm text-charcoal-light">
                 <span class="mr-2">📅</span>
                 <span class="font-medium">
-                    <?= htmlspecialchars($activity->date) ?>
+                    <?= e($activity->date) ?>
                 </span>
             </div>
 
@@ -180,7 +235,7 @@ ob_start();
                 <div class="flex flex-col md:flex-row items-center text-sm text-charcoal-light">
                     <span class="mr-2">🕐</span>
                     <span class="font-medium">
-                        <?= htmlspecialchars($activity->time) ?>
+                        <?= e($activity->time) ?>
                     </span>
                 </div>
             <?php endif; ?>
@@ -188,7 +243,7 @@ ob_start();
             <div class="flex flex-col md:flex-row items-center text-sm text-charcoal-light">
                 <span class="mr-2">📍</span>
                 <span class="font-medium">
-                    <?= htmlspecialchars($activity->location) ?>
+                    <?= e($activity->location) ?>
                 </span>
             </div>
         </div>
@@ -200,7 +255,7 @@ ob_start();
                 </span>
 
                 <span class="text-sm font-bold text-charcoal">
-                    <?= htmlspecialchars($activity->role) ?>
+                    <?= e($activity->role) ?>
                 </span>
             </div>
 
@@ -210,19 +265,49 @@ ob_start();
                 </span>
 
                 <span class="text-sm font-bold text-charcoal">
-                    <?= htmlspecialchars($activity->hours) ?> hours
+                    <?= $activity->status === 'Completed' ? e($activity->hours) . ' hours' : 'Pending completion' ?>
                 </span>
             </div>
+
+            <?php if ($activity->status === 'Completed' && $activity->karma_points > 0): ?>
+                <div class="flex flex-col md:flex-row justify-between items-center mt-2 pt-2 border-t border-dashed border-charcoal/10">
+                    <span class="text-xs font-bold uppercase tracking-wide text-gold">
+                        Karma Points
+                    </span>
+
+                    <span class="text-sm font-bold text-forest">
+                        +<?= (int)$activity->karma_points ?>
+                    </span>
+                </div>
+            <?php endif; ?>
         </div>
     </div>
 
-    <div class="p-4 md:p-8 bg-ivory/20 border-t border-charcoal/5 mt-auto">
-        <a
-            href="<?= baseUrl('?page=events') ?>" 
-            class="block text-center w-full px-4 py-2 border border-charcoal/10 text-sm font-bold rounded-lg text-forest bg-white hover:bg-ivory-dark transition-colors shadow-sm"
-        >
-            View Activity
-        </a>
+    <div class="p-4 md:p-6 bg-ivory/20 border-t border-charcoal/5 mt-auto flex flex-col sm:flex-row items-center gap-3">
+        <?php if ($activity->event_id): ?>
+            <a
+                href="<?= baseUrl('?page=event-details&id=' . $activity->event_id) ?>" 
+                class="block text-center flex-1 w-full px-4 py-2 border border-charcoal/10 text-sm font-bold rounded-lg text-forest bg-white hover:bg-ivory-dark transition-colors shadow-sm"
+            >
+                View Event
+            </a>
+        <?php else: ?>
+            <a
+                href="<?= baseUrl('?page=events') ?>" 
+                class="block text-center flex-1 w-full px-4 py-2 border border-charcoal/10 text-sm font-bold rounded-lg text-forest bg-white hover:bg-ivory-dark transition-colors shadow-sm"
+            >
+                Browse Events
+            </a>
+        <?php endif; ?>
+
+        <?php if ($activity->status === 'Registered'): ?>
+            <form method="POST" onsubmit="return confirm('Are you sure you want to cancel your volunteer registration?');" class="w-full sm:w-auto">
+                <input type="hidden" name="cancel_activity_id" value="<?= (int)$activity->id ?>">
+                <button type="submit" class="w-full sm:w-auto px-4 py-2 border border-red-200 text-sm font-bold rounded-lg text-red-600 bg-white hover:bg-red-50 transition-colors shadow-sm">
+                    Cancel
+                </button>
+            </form>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -231,42 +316,45 @@ ob_start();
     };
 ?>
 
-        <!-- Upcoming Activities Section -->
-        <div class="mb-12">
-            <h2 class="text-2xl md:text-4xl font-serif font-bold text-forest mb-6">Upcoming Activities</h2>
-            <?php if (count($upcomingActivities) > 0): ?>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <?php foreach ($upcomingActivities as $activity): ?>
-                        <?= $renderCard($activity) ?>
-                    <?php endforeach; ?>
-                </div>
-            <?php else: ?>
-                <!-- Prepared Empty State (Hidden via data) -->
-                <div class="bg-white rounded-2xl p-10 text-center shadow-sm border border-charcoal/5">
-                    <h3 class="text-xl font-bold text-charcoal mb-2">No Upcoming Activities</h3>
-                    <p class="text-charcoal-light mb-6">Find an opportunity to contribute your time and make a difference.</p>
-                    <a href="<?= baseUrl('?page=events') ?>"  class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-sm font-bold rounded-full shadow-sm text-white bg-forest hover:bg-forest-dark transition-colors">Find Volunteer Opportunities</a>
-                </div>
-            <?php endif; ?>
-        </div>
+        <?php if ($selectedStatus === 'all' || $selectedStatus === 'upcoming'): ?>
+            <!-- Upcoming Activities Section -->
+            <div class="mb-12">
+                <h2 class="text-2xl md:text-4xl font-serif font-bold text-forest mb-6">Upcoming Activities</h2>
+                <?php if (count($upcomingActivities) > 0): ?>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <?php foreach ($upcomingActivities as $activity): ?>
+                            <?= $renderCard($activity) ?>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
+                    <div class="bg-white rounded-2xl p-10 text-center shadow-sm border border-charcoal/5">
+                        <h3 class="text-xl font-bold text-charcoal mb-2">No Upcoming Activities</h3>
+                        <p class="text-charcoal-light mb-6">Find an opportunity to contribute your time and make a difference.</p>
+                        <a href="<?= baseUrl('?page=events') ?>" class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-sm font-bold rounded-full shadow-sm text-white bg-forest hover:bg-forest-dark transition-colors">Find Volunteer Opportunities</a>
+                    </div>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
 
-        <!-- Completed Activities Section -->
-        <div class="mb-12">
-            <h2 class="text-2xl md:text-4xl font-serif font-bold text-forest mb-6">Completed Activities</h2>
-            <?php if (count($completedActivities) > 0): ?>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <?php foreach ($completedActivities as $activity): ?>
-                        <?= $renderCard($activity) ?>
-                    <?php endforeach; ?>
-                </div>
-            <?php else: ?>
-                <div class="bg-white rounded-2xl p-10 text-center shadow-sm border border-charcoal/5">
-                    <h3 class="text-xl font-bold text-charcoal mb-2">No Volunteer Activities Yet</h3>
-                    <p class="text-charcoal-light mb-6">Find an opportunity to contribute your time and make a difference.</p>
-                    <a href="<?= baseUrl('?page=events') ?>"  class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-sm font-bold rounded-full shadow-sm text-white bg-forest hover:bg-forest-dark transition-colors">Find Volunteer Opportunities</a>
-                </div>
-            <?php endif; ?>
-        </div>
+        <?php if ($selectedStatus === 'all' || $selectedStatus === 'completed'): ?>
+            <!-- Completed Activities Section -->
+            <div class="mb-12">
+                <h2 class="text-2xl md:text-4xl font-serif font-bold text-forest mb-6">Completed Activities</h2>
+                <?php if (count($completedActivities) > 0): ?>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <?php foreach ($completedActivities as $activity): ?>
+                            <?= $renderCard($activity) ?>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
+                    <div class="bg-white rounded-2xl p-10 text-center shadow-sm border border-charcoal/5">
+                        <h3 class="text-xl font-bold text-charcoal mb-2">No Completed Volunteer Activities Yet</h3>
+                        <p class="text-charcoal-light mb-6">Find an opportunity to contribute your time and make a difference.</p>
+                        <a href="<?= baseUrl('?page=events') ?>" class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-sm font-bold rounded-full shadow-sm text-white bg-forest hover:bg-forest-dark transition-colors">Find Volunteer Opportunities</a>
+                    </div>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
 
         <!-- Impact Section -->
         <div class="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gold/20 relative overflow-hidden">
@@ -279,11 +367,11 @@ ob_start();
                 <div class="flex flex-col md:flex-row gap-6 sm:gap-8 justify-center text-center md:text-right">
                     <div>
                         <p class="text-xs font-bold uppercase tracking-wide text-charcoal-light mb-1">Completed</p>
-                        <p class="text-2xl md:text-4xl font-serif font-bold text-forest">5 Activities</p>
+                        <p class="text-2xl md:text-4xl font-serif font-bold text-forest"><?= $completedCount ?> <?= $completedCount === 1 ? 'Activity' : 'Activities' ?></p>
                     </div>
                     <div>
                         <p class="text-xs font-bold uppercase tracking-wide text-charcoal-light mb-1">Contributed</p>
-                        <p class="text-2xl md:text-4xl font-serif font-bold text-forest">12 Hours</p>
+                        <p class="text-2xl md:text-4xl font-serif font-bold text-forest"><?= $totalHours ?> Hours</p>
                     </div>
                 </div>
             </div>

@@ -50,16 +50,10 @@ $sql = "SELECT
 $result = mysqli_query($con, $sql);
 $contributionSummary = mysqli_fetch_assoc($result);
 
-/* GET KARMA POINTS */
-
-$sql = "SELECT COALESCE(SUM(points), 0) AS total_points
-        FROM karma_transactions
-        WHERE user_id = $userId";
-
-$result = mysqli_query($con, $sql);
-$karmaData = mysqli_fetch_assoc($result);
-
-$karmaPoints = (int) $karmaData['total_points'];
+/* GET KARMA POINTS & SUMMARY */
+$karmaSummary = getUserKarmaSummary($userId);
+$karmaPoints = (int) $karmaSummary['balance'];
+$karmaTransactions = getUserRecentKarmaTransactions($userId, 10);
 
 /* GET EVENTS JOINED */
 
@@ -86,13 +80,24 @@ $upcomingData = mysqli_fetch_assoc($result);
 
 /* GET VOLUNTEER ACTIVITIES */
 
-$sql = "SELECT COUNT(*) AS total_activities
-        FROM karma_transactions
-        WHERE user_id = $userId
-        AND source_type = 'volunteering'";
+$sql = "SELECT 
+            COUNT(CASE WHEN status = 'completed' THEN 1 END) AS completed_activities,
+            COUNT(CASE WHEN status = 'registered' THEN 1 END) AS upcoming_activities,
+            COALESCE(SUM(CASE WHEN status = 'completed' THEN hours_completed ELSE 0 END), 0) AS total_hours
+        FROM volunteer_activities
+        WHERE user_id = $userId";
 
 $result = mysqli_query($con, $sql);
 $volunteerData = mysqli_fetch_assoc($result);
+
+/* GET NEXT VOLUNTEER ACTIVITY */
+$sql = "SELECT title, activity_date 
+        FROM volunteer_activities 
+        WHERE user_id = $userId AND status = 'registered' AND activity_date >= CURDATE() 
+        ORDER BY activity_date ASC LIMIT 1";
+$result = mysqli_query($con, $sql);
+$nextAct = $result ? mysqli_fetch_assoc($result) : null;
+$nextActivityText = $nextAct ? ($nextAct['title'] . ' (' . date('d M', strtotime($nextAct['activity_date'])) . ')') : 'No upcoming activities';
 
 /* GET LEADERBOARD RANK */
 
@@ -123,12 +128,14 @@ $user = (object)[
     'contributions_count' => (int) $contributionSummary['total_count'],
 
     'karma_points' => number_format($karmaPoints),
+    'karma_total_earned' => number_format($karmaSummary['total_earned']),
+    'karma_total_reversed' => number_format($karmaSummary['total_reversed']),
 
     'events_joined' => (int) $eventsData['total_events'],
     'events_upcoming' => (int) $upcomingData['upcoming_events'],
 
-    'volunteer_activities' => (int) $volunteerData['total_activities'],
-    'volunteer_hours' => '—',
+    'volunteer_activities' => (int) ($volunteerData['completed_activities'] ?? 0),
+    'volunteer_hours' => ($volunteerData ? (float) $volunteerData['total_hours'] : 0) . 'h',
 
     'next_reward' => number_format($nextRewardPoints) . ' points',
     'next_reward_name' => 'Silver Member',
@@ -136,7 +143,7 @@ $user = (object)[
 
     'rank' => (int) $rankData['user_rank'],
 
-    'next_activity' => '—'
+    'next_activity' => $nextActivityText
 ];
 
 /* GET RECENT CONTRIBUTIONS */
@@ -220,7 +227,7 @@ while ($row = mysqli_fetch_object($result)) {
                 <a href="<?= baseUrl('?page=events') ?>"  class="inline-flex items-center justify-center px-5 py-2.5 border border-charcoal/10 text-sm font-bold rounded-full text-charcoal bg-white hover:bg-ivory-dark transition-colors shadow-sm hover:shadow-md">
                     Browse Events
                 </a>
-                <a href="#" class="inline-flex items-center justify-center px-5 py-2.5 border border-charcoal/10 text-sm font-bold rounded-full text-charcoal bg-white hover:bg-ivory-dark transition-colors shadow-sm hover:shadow-md">
+                <a href="<?= baseUrl('user/volunteer-activities.php') ?>" class="inline-flex items-center justify-center px-5 py-2.5 border border-charcoal/10 text-sm font-bold rounded-full text-charcoal bg-white hover:bg-ivory-dark transition-colors shadow-sm hover:shadow-md">
                     Volunteer
                 </a>
             </div>
@@ -270,8 +277,24 @@ while ($row = mysqli_fetch_object($result)) {
                                 <p class="text-sm text-charcoal-light mt-1 max-w-sm">You're making a meaningful difference through your contributions and participation.</p>
                             </div>
                             <div class="mt-4 sm:mt-0 text-left sm:text-right">
-                                <span class="text-sm text-charcoal-light block mb-1 font-medium">Karma Points</span>
+                                <span class="text-sm text-charcoal-light block mb-1 font-medium">Karma Points Balance</span>
                                 <span class="text-4xl font-serif font-bold text-gold"><?= e($user->karma_points) ?></span>
+                            </div>
+                        </div>
+
+                        <!-- Karma Stats Breakdown -->
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+                            <div class="p-3 bg-ivory/50 rounded-xl border border-charcoal/5">
+                                <span class="text-[11px] font-bold uppercase tracking-wider text-charcoal-light block mb-0.5">Current Balance</span>
+                                <span class="text-lg font-bold text-forest"><?= e($user->karma_points) ?> pts</span>
+                            </div>
+                            <div class="p-3 bg-green-50/50 rounded-xl border border-green-200/50">
+                                <span class="text-[11px] font-bold uppercase tracking-wider text-green-700 block mb-0.5">Total Earned</span>
+                                <span class="text-lg font-bold text-green-700">+<?= e($user->karma_total_earned) ?> pts</span>
+                            </div>
+                            <div class="p-3 bg-red-50/50 rounded-xl border border-red-200/50">
+                                <span class="text-[11px] font-bold uppercase tracking-wider text-red-700 block mb-0.5">Total Reversed</span>
+                                <span class="text-lg font-bold text-red-700"><?= (int)$karmaSummary['total_reversed'] > 0 ? '-' : '' ?><?= e($user->karma_total_reversed) ?> pts</span>
                             </div>
                         </div>
                         
@@ -286,14 +309,78 @@ while ($row = mysqli_fetch_object($result)) {
                         </div>
                         
                         <div>
-                            <a href="#" class="inline-flex items-center text-sm font-bold text-forest hover:text-gold transition-colors">
-                                View Rewards
+                            <a href="<?= baseUrl('pages/leaderboard.php') ?>" class="inline-flex items-center text-sm font-bold text-forest hover:text-gold transition-colors">
+                                View Leaderboard
                                 <svg class="ml-1.5 w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                                 </svg>
                             </a>
                         </div>
                     </div>
+                </div>
+
+                <!-- KARMA TRANSACTION HISTORY -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gold/20 overflow-hidden">
+                    <div class="p-6 md:p-8 flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-charcoal/5 gap-2">
+                        <div>
+                            <h2 class="text-2xl md:text-3xl font-serif font-bold text-forest">Karma Points History</h2>
+                            <p class="text-xs text-charcoal-light mt-0.5">Recent points earned and reversed across all activities</p>
+                        </div>
+                        <span class="px-3 py-1 bg-forest/10 text-forest text-xs font-bold rounded-full">
+                            <?= count($karmaTransactions) ?> Recent <?= count($karmaTransactions) === 1 ? 'Transaction' : 'Transactions' ?>
+                        </span>
+                    </div>
+
+                    <?php if (!empty($karmaTransactions)): ?>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="border-b border-charcoal/10 bg-ivory/30 text-charcoal font-bold uppercase tracking-wider text-[11px]">
+                                        <th class="py-3 px-6">Date</th>
+                                        <th class="py-3 px-6">Activity / Description</th>
+                                        <th class="py-3 px-6">Type</th>
+                                        <th class="py-3 px-6 text-right">Points</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-charcoal/5">
+                                    <?php foreach ($karmaTransactions as $tx): ?>
+                                        <?php
+                                        $sourceLabels = [
+                                            'donation_money' => 'Money Donation',
+                                            'donation_resource' => 'Resource Donation',
+                                            'volunteering' => 'Volunteering',
+                                            'event_attendance' => 'Event Attendance',
+                                            'admin_adjustment' => 'Admin Adjustment'
+                                        ];
+                                        $sourceLabel = $sourceLabels[$tx['source_type']] ?? ucfirst(str_replace('_', ' ', $tx['source_type']));
+                                        $isPositive = (int)$tx['points'] > 0;
+                                        ?>
+                                        <tr class="hover:bg-ivory/20 transition-colors">
+                                            <td class="py-3.5 px-6 font-medium text-charcoal-light whitespace-nowrap">
+                                                <?= date('d M Y', strtotime($tx['created_at'])) ?>
+                                            </td>
+                                            <td class="py-3.5 px-6 font-medium text-charcoal">
+                                                <?= e($tx['description']) ?>
+                                            </td>
+                                            <td class="py-3.5 px-6 whitespace-nowrap">
+                                                <span class="inline-block px-2.5 py-0.5 bg-forest/10 text-forest rounded-md font-medium text-[11px]">
+                                                    <?= e($sourceLabel) ?>
+                                                </span>
+                                            </td>
+                                            <td class="py-3.5 px-6 text-right whitespace-nowrap font-bold text-sm <?= $isPositive ? 'text-forest' : 'text-red-600' ?>">
+                                                <?= $isPositive ? '+' : '' ?><?= (int)$tx['points'] ?>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php else: ?>
+                        <div class="p-8 text-center text-charcoal-light text-sm">
+                            <p class="font-medium">No Karma transactions recorded yet.</p>
+                            <p class="text-xs text-charcoal-light mt-1">Earn points by making donations, volunteering, or attending events!</p>
+                        </div>
+                    <?php endif; ?>
                 </div>
 
                 <!-- RECENT CONTRIBUTIONS -->
@@ -433,7 +520,7 @@ while ($row = mysqli_fetch_object($result)) {
                         <p class="text-sm font-bold text-charcoal"><?= e($user->next_activity) ?></p>
                     </div>
 
-                    <a href="#" class="block text-center w-full px-4 py-2.5 border border-charcoal/10 text-sm font-bold rounded-full text-charcoal bg-ivory/30 hover:bg-ivory-dark transition-colors shadow-sm hover:shadow-md relative z-10">
+                    <a href="<?= baseUrl('user/volunteer-activities.php') ?>" class="block text-center w-full px-4 py-2.5 border border-charcoal/10 text-sm font-bold rounded-full text-charcoal bg-ivory/30 hover:bg-ivory-dark transition-colors shadow-sm hover:shadow-md relative z-10">
                         View Activities
                     </a>
                 </div>

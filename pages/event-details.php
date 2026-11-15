@@ -48,7 +48,7 @@ if (isset($_SESSION['booking_message'])) {
 
 // PROCESS TICKET BOOKING
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['book_tickets'])) {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['book_tickets'])) {
 
     if (!isset($_SESSION['user_id'])) {
 
@@ -219,6 +219,91 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['book_tickets'])) {
                 $bookingMessageType = 'error';
             }
         }
+    }
+}
+
+// GET VOLUNTEER MESSAGE
+
+$volunteerMessage = '';
+$volunteerMessageType = '';
+
+if (isset($_SESSION['volunteer_message'])) {
+    $volunteerMessage = $_SESSION['volunteer_message'];
+    $volunteerMessageType = $_SESSION['volunteer_message_type'];
+
+    unset($_SESSION['volunteer_message']);
+    unset($_SESSION['volunteer_message_type']);
+}
+
+// PROCESS VOLUNTEER REGISTRATION
+
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['volunteer_register'])) {
+
+    if (!isset($_SESSION['user_id'])) {
+        $_SESSION['volunteer_message'] = "Please login before registering as a volunteer.";
+        $_SESSION['volunteer_message_type'] = 'error';
+    } else {
+        $userId = (int) $_SESSION['user_id'];
+        $userRole = $_SESSION['user_role'] ?? 'user';
+
+        if ($userRole !== 'user') {
+            $_SESSION['volunteer_message'] = "Only user accounts can register as volunteers.";
+            $_SESSION['volunteer_message_type'] = 'error';
+        } elseif ($event['status'] !== 'upcoming') {
+            $_SESSION['volunteer_message'] = "Volunteering is only available for upcoming events.";
+            $_SESSION['volunteer_message_type'] = 'error';
+        } else {
+            // Check duplicate registration
+            $dupStmt = mysqli_prepare($con, "SELECT id FROM volunteer_activities WHERE user_id = ? AND event_id = ? AND status != 'cancelled' LIMIT 1");
+            mysqli_stmt_bind_param($dupStmt, "ii", $userId, $id);
+            mysqli_stmt_execute($dupStmt);
+            $dupRes = mysqli_stmt_get_result($dupStmt);
+
+            if ($dupRes && mysqli_num_rows($dupRes) > 0) {
+                $_SESSION['volunteer_message'] = "You are already registered as a volunteer for this event.";
+                $_SESSION['volunteer_message_type'] = 'error';
+            } else {
+                $role = isset($_POST['volunteer_role']) ? trim($_POST['volunteer_role']) : 'Event Volunteer';
+                if ($role === '') {
+                    $role = 'Event Volunteer';
+                }
+
+                $ngoId = (int) $event['ngo_id'];
+                $eventTitle = $event['title'];
+                $eventDateStr = $event['event_date'];
+                $startTime = !empty($event['start_time']) ? $event['start_time'] : null;
+                $endTime = !empty($event['end_time']) ? $event['end_time'] : null;
+                $location = $event['location'];
+
+                $insStmt = mysqli_prepare($con, "INSERT INTO volunteer_activities (user_id, ngo_id, event_id, title, volunteer_role, activity_date, start_time, end_time, location, hours_completed, status, karma_points_awarded, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0.0, 'registered', 0, NOW(), NOW())");
+                mysqli_stmt_bind_param($insStmt, "iiissssss", $userId, $ngoId, $id, $eventTitle, $role, $eventDateStr, $startTime, $endTime, $location);
+
+                if (mysqli_stmt_execute($insStmt)) {
+                    $_SESSION['volunteer_message'] = "You have successfully registered as a volunteer for this event!";
+                    $_SESSION['volunteer_message_type'] = 'success';
+                } else {
+                    $_SESSION['volunteer_message'] = "Unable to process your registration. Please try again.";
+                    $_SESSION['volunteer_message_type'] = 'error';
+                }
+            }
+        }
+    }
+
+    header("Location: " . $_SERVER['REQUEST_URI']);
+    exit;
+}
+
+// CHECK IF LOGGED-IN USER IS ALREADY REGISTERED AS VOLUNTEER
+
+$userVolRecord = null;
+if (isset($_SESSION['user_id'])) {
+    $currentUserId = (int) $_SESSION['user_id'];
+    $chkStmt = mysqli_prepare($con, "SELECT * FROM volunteer_activities WHERE user_id = ? AND event_id = ? AND status != 'cancelled' LIMIT 1");
+    mysqli_stmt_bind_param($chkStmt, "ii", $currentUserId, $id);
+    mysqli_stmt_execute($chkStmt);
+    $chkRes = mysqli_stmt_get_result($chkStmt);
+    if ($chkRes && mysqli_num_rows($chkRes) > 0) {
+        $userVolRecord = mysqli_fetch_assoc($chkRes);
     }
 }
 
@@ -534,6 +619,94 @@ $eventEndTime = date('h:i A', strtotime($event['end_time']));
 
     </form>
 
+</div>
+
+<!-- VOLUNTEER CARD -->
+<div id="volunteerCard" class="bg-white p-6 md:p-8 rounded-3xl border border-gold/30 shadow-md">
+    <div class="flex items-center justify-between mb-4">
+        <h3 class="text-2xl font-serif text-forest">Volunteer for Event</h3>
+        <span class="inline-block bg-gold/20 text-forest text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+            +120 Karma
+        </span>
+    </div>
+
+    <p class="text-sm text-charcoal-light mb-6">Contribute your time and help make this event a success. Earn 120 Karma points upon completed participation.</p>
+
+    <?php if ($volunteerMessage !== ''): ?>
+        <div class="mb-6 p-4 rounded-xl <?= $volunteerMessageType === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200' ?>">
+            <p class="text-sm font-medium"><?= e($volunteerMessage) ?></p>
+        </div>
+    <?php endif; ?>
+
+    <?php if (!isset($_SESSION['user_id'])): ?>
+        <div class="p-4 bg-ivory rounded-2xl border border-gold/20 text-center">
+            <p class="text-sm text-charcoal-light mb-4">Sign in with your user account to volunteer for this event.</p>
+            <a href="<?= baseUrl('auth/login.php') ?>" class="inline-block w-full bg-forest text-ivory hover:bg-forest/90 font-bold py-3 px-6 rounded-xl transition-all shadow-md text-sm text-center">
+                Login to Volunteer
+            </a>
+        </div>
+    <?php elseif (($_SESSION['user_role'] ?? 'user') !== 'user'): ?>
+        <div class="p-4 bg-ivory rounded-2xl border border-gold/20 text-center">
+            <p class="text-xs text-charcoal-light">You are logged in as <?= e($_SESSION['user_role'] ?? '') ?>. Only donor/volunteer accounts can sign up for volunteer activities.</p>
+        </div>
+    <?php elseif ($userVolRecord !== null): ?>
+        <div class="p-5 bg-green-50/80 rounded-2xl border border-green-200">
+            <div class="flex items-center gap-2 mb-2">
+                <svg class="w-5 h-5 text-forest" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <h4 class="font-bold text-forest text-sm">You are Registered!</h4>
+            </div>
+            <p class="text-xs text-charcoal-light mb-4">You are registered as a volunteer for this event.</p>
+            <div class="text-xs space-y-1.5 mb-4 text-charcoal">
+                <div class="flex justify-between"><span class="text-charcoal-light">Role:</span> <span class="font-bold"><?= e($userVolRecord['volunteer_role']) ?></span></div>
+                <div class="flex justify-between"><span class="text-charcoal-light">Status:</span> <span class="font-bold uppercase tracking-wider text-forest"><?= e(ucfirst($userVolRecord['status'])) ?></span></div>
+                <?php if ($userVolRecord['status'] === 'completed'): ?>
+                    <div class="flex justify-between"><span class="text-charcoal-light">Karma Awarded:</span> <span class="font-bold text-forest">+<?= (int)$userVolRecord['karma_points_awarded'] ?> Points</span></div>
+                <?php endif; ?>
+            </div>
+            <a href="<?= baseUrl('user/volunteer-activities.php') ?>" class="block text-center w-full py-2.5 px-4 bg-white border border-forest/20 text-forest hover:bg-forest hover:text-white rounded-xl text-xs font-bold transition-all shadow-sm">
+                View Your Activities
+            </a>
+        </div>
+    <?php else: ?>
+        <form method="POST">
+            <input type="hidden" name="volunteer_register" value="1">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-charcoal uppercase tracking-wider mb-2">Volunteer Role</label>
+                    <select name="volunteer_role" class="w-full px-4 py-3 bg-ivory border border-gold/30 rounded-xl focus:ring-2 focus:ring-forest focus:border-transparent outline-none text-charcoal text-sm font-medium">
+                        <option value="Event Volunteer">Event Volunteer (General Support)</option>
+                        <option value="Logistics & Setup">Logistics & Setup</option>
+                        <option value="Registration Desk">Registration Desk</option>
+                        <option value="Guest Assistance">Guest Assistance</option>
+                        <option value="Refreshments & Distribution">Refreshments & Distribution</option>
+                    </select>
+                </div>
+
+                <div class="text-xs text-charcoal-light space-y-1 p-3 bg-ivory/50 rounded-xl border border-gold/10">
+                    <div class="flex items-center gap-1.5">
+                        <span>📍</span>
+                        <span class="truncate"><?= e($event['location']) ?></span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span>📅</span>
+                        <span><?= e($eventDate) ?></span>
+                    </div>
+                </div>
+
+                <button type="submit" name="volunteer_register" value="1"
+                    <?= $event['status'] !== 'upcoming' ? 'disabled' : '' ?>
+                    class="w-full bg-forest text-ivory hover:bg-forest/90 disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3.5 rounded-xl font-bold transition-all shadow-md text-sm flex items-center justify-center gap-2 group">
+                    <span><?= $event['status'] !== 'upcoming' ? 'Volunteering Closed' : 'Register as Volunteer' ?></span>
+                    <svg class="w-4 h-4 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                    </svg>
+                </button>
+                <p class="text-[11px] text-charcoal-light text-center">⭐ +120 Karma points awarded upon activity completion</p>
+            </div>
+        </form>
+    <?php endif; ?>
 </div>
 
 

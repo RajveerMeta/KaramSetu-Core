@@ -152,6 +152,25 @@ while ($row = mysqli_fetch_assoc($result)) {
 
 $ngo['opportunities'] = [];
 
+$oppSql = "SELECT id, title, short_description AS description, location,
+                  CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), IF(end_time IS NOT NULL, CONCAT(' – ', TIME_FORMAT(end_time, '%h:%i %p')), '')) AS duration
+           FROM events
+           WHERE ngo_id = $ngoId
+           AND status = 'upcoming'
+           ORDER BY event_date ASC";
+
+$oppRes = mysqli_query($con, $oppSql);
+if ($oppRes) {
+    while ($opp = mysqli_fetch_assoc($oppRes)) {
+        $ngo['opportunities'][] = [
+            'id' => (int)$opp['id'],
+            'title' => $opp['title'],
+            'duration' => !empty($opp['duration']) ? $opp['duration'] : 'Flexible / Event Day',
+            'description' => !empty($opp['description']) ? $opp['description'] : 'Volunteer with our team for this community initiative.'
+        ];
+    }
+}
+
 ?>
 
 <!-- 03. NGO PROFILE HEADER -->
@@ -391,21 +410,27 @@ $ngo['opportunities'] = [];
             <div>
                 <h2 class="text-3xl font-serif text-forest mb-6">Volunteer Opportunities</h2>
                 <div class="space-y-6">
-                    <?php foreach($ngo['opportunities'] as $opportunity): ?>
-                        <div class="border border-gold/20 rounded-2xl p-6 bg-ivory hover:bg-white hover:border-forest/40 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 ease-out group cursor-pointer">
-                            <h4 class="text-xl font-medium text-forest mb-2 group-hover:text-gold transition-colors"><?= e($opportunity['title']) ?></h4>
-                            <div class="flex items-center gap-4 text-xs font-bold text-charcoal uppercase tracking-wider mb-3">
-                                <span class="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded shadow-sm border border-gold/10">
-                                    <svg class="w-3.5 h-3.5 text-gold" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                    <?= e($opportunity['duration']) ?>
-                                </span>
+                    <?php if (!empty($ngo['opportunities'])): ?>
+                        <?php foreach($ngo['opportunities'] as $opportunity): ?>
+                            <div class="border border-gold/20 rounded-2xl p-6 bg-ivory hover:bg-white hover:border-forest/40 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 ease-out group cursor-pointer">
+                                <h4 class="text-xl font-medium text-forest mb-2 group-hover:text-gold transition-colors"><?= e($opportunity['title']) ?></h4>
+                                <div class="flex items-center gap-4 text-xs font-bold text-charcoal uppercase tracking-wider mb-3">
+                                    <span class="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded shadow-sm border border-gold/10">
+                                        <svg class="w-3.5 h-3.5 text-gold" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                        <?= e($opportunity['duration']) ?>
+                                    </span>
+                                </div>
+                                <p class="text-sm text-charcoal-light mb-4 leading-relaxed"><?= e($opportunity['description']) ?></p>
+                                <a href="<?= baseUrl('?page=event-details&id=' . (int)$opportunity['id']) ?>" class="inline-block bg-forest/5 text-forest border border-forest/20 group-hover:bg-forest group-hover:text-ivory px-5 py-2 rounded-lg font-bold text-sm transition-colors">
+                                    Apply to Volunteer
+                                </a>
                             </div>
-                            <p class="text-sm text-charcoal-light mb-4 leading-relaxed"><?= e($opportunity['description']) ?></p>
-                            <span class="inline-block bg-forest/5 text-forest border border-forest/20 group-hover:bg-forest group-hover:text-ivory px-5 py-2 rounded-lg font-bold text-sm transition-colors">
-                                Apply to Volunteer
-                            </span>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <div class="border border-charcoal/10 rounded-2xl p-6 bg-ivory/30 text-center">
+                            <p class="text-charcoal-light text-sm">No volunteering opportunities currently available for this organization.</p>
                         </div>
-                    <?php endforeach; ?>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>

@@ -137,6 +137,47 @@ if (isset($_POST['update_status'])) {
     exit;
 }
 
+/* Mark attendee as attended */
+if (isset($_POST['mark_attended_booking_id'])) {
+    $bookingId = (int)$_POST['mark_attended_booking_id'];
+    $chkStmt = mysqli_prepare($con, "SELECT eb.*, u.name AS attendee_name FROM event_bookings eb INNER JOIN users u ON eb.user_id = u.id WHERE eb.id = ? AND eb.event_id = ? AND eb.booking_status = 'confirmed' LIMIT 1");
+    if ($chkStmt) {
+        mysqli_stmt_bind_param($chkStmt, 'ii', $bookingId, $eventId);
+        mysqli_stmt_execute($chkStmt);
+        $chkRes = mysqli_stmt_get_result($chkStmt);
+        if ($chkRes && mysqli_num_rows($chkRes) > 0) {
+            $bData = mysqli_fetch_assoc($chkRes);
+            $attendeeUserId = (int)$bData['user_id'];
+            $eventTitle = $event['title'] ?? 'Event';
+
+            mysqli_begin_transaction($con);
+
+            $upStmt = mysqli_prepare($con, "UPDATE event_bookings SET booking_status = 'attended', updated_at = NOW() WHERE id = ?");
+            mysqli_stmt_bind_param($upStmt, 'i', $bookingId);
+            $upOk = mysqli_stmt_execute($upStmt);
+            mysqli_stmt_close($upStmt);
+
+            $tx = awardKarmaPoints($attendeeUserId, 50, 'event_attendance', $bookingId, "Karma points for attending event: " . $eventTitle);
+
+            if ($upOk && $tx) {
+                mysqli_commit($con);
+                $_SESSION['event_message'] = "Attendance verified for " . $bData['attendee_name'] . "! Awarded 50 Karma points.";
+                $_SESSION['event_message_type'] = 'success';
+            } else {
+                mysqli_rollback($con);
+                $_SESSION['event_message'] = "Failed to verify attendance. Please try again.";
+                $_SESSION['event_message_type'] = 'error';
+            }
+        } else {
+            $_SESSION['event_message'] = "Booking not found or already verified.";
+            $_SESSION['event_message_type'] = 'error';
+        }
+        mysqli_stmt_close($chkStmt);
+    }
+    header('Location: ' . baseUrl('admin/events/view.php?id=' . $eventId));
+    exit;
+}
+
 /* Count registered participants */
 $sql = "SELECT COALESCE(SUM(quantity), 0) AS registered
         FROM event_bookings

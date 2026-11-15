@@ -1,36 +1,218 @@
 <?php
 require_once __DIR__ . '/../includes/functions.php';
 requireUser();
+require_once __DIR__ . '/../Database/db_config.php';
+
+$userId = isset($_SESSION['user_id']) ? (int) $_SESSION['user_id'] : 0;
+if ($userId <= 0) {
+    header('Location: ' . baseUrl('auth/login.php'));
+    exit;
+}
+
+// 1. Fetch current user from users table
+$userQuery = mysqli_query($con, "SELECT id, name, email, phone, role, status FROM users WHERE id = $userId AND role = 'user' LIMIT 1");
+if (!$userQuery || mysqli_num_rows($userQuery) === 0) {
+    header('Location: ' . baseUrl('auth/logout.php'));
+    exit;
+}
+$existingUser = mysqli_fetch_assoc($userQuery);
+
+// 2. Fetch or initialize user_profiles record
+$profileQuery = mysqli_query($con, "SELECT * FROM user_profiles WHERE user_id = $userId LIMIT 1");
+if ($profileQuery && mysqli_num_rows($profileQuery) > 0) {
+    $existingProfile = mysqli_fetch_assoc($profileQuery);
+} else {
+    // Missing profile record: safely create it with schema defaults
+    $initStmt = mysqli_prepare($con, "INSERT INTO user_profiles (user_id) VALUES (?)");
+    if ($initStmt) {
+        mysqli_stmt_bind_param($initStmt, "i", $userId);
+        mysqli_stmt_execute($initStmt);
+        mysqli_stmt_close($initStmt);
+    }
+    $profileQuery = mysqli_query($con, "SELECT * FROM user_profiles WHERE user_id = $userId LIMIT 1");
+    $existingProfile = ($profileQuery && mysqli_num_rows($profileQuery) > 0) ? mysqli_fetch_assoc($profileQuery) : [];
+}
+
+$successMsg = '';
+$errorMsg = '';
+$isEditMode = false;
+
+// Check for session flash messages
+if (!empty($_SESSION['profile_success'])) {
+    $successMsg = $_SESSION['profile_success'];
+    unset($_SESSION['profile_success']);
+}
+
+// Default form field values from database
+$formName = $existingUser['name'] ?? '';
+$formPhone = $existingUser['phone'] ?? '';
+$formDob = $existingProfile['dob'] ?? '';
+$formCity = $existingProfile['city'] ?? '';
+$formState = $existingProfile['state'] ?? '';
+
+// 3. Handle Form Submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $isEditMode = true;
+
+    $submittedName = trim($_POST['name'] ?? '');
+    $submittedPhone = trim($_POST['phone'] ?? '');
+    $submittedDob = trim($_POST['dob'] ?? '');
+    $submittedCity = trim($_POST['city'] ?? '');
+    $submittedState = trim($_POST['state'] ?? '');
+
+    // Keep submitted values in form inputs on validation failure
+    $formName = ($submittedName !== '') ? $submittedName : $existingUser['name'];
+    $formPhone = $submittedPhone;
+    $formDob = $submittedDob;
+    $formCity = $submittedCity;
+    $formState = $submittedState;
+
+    // Check for empty form submission
+    if ($submittedName === '' && $submittedPhone === '' && $submittedDob === '' && $submittedCity === '' && $submittedState === '') {
+        $errorMsg = 'Please enter valid information to update your profile.';
+    }
+
+    // Server-side validation
+    $nameToSave = $existingUser['name'];
+    if ($errorMsg === '' && $submittedName !== '') {
+        if (strlen($submittedName) < 2 || strlen($submittedName) > 150) {
+            $errorMsg = 'Full Name must be between 2 and 150 characters.';
+        } elseif (!preg_match("/^[a-zA-Z\s]+$/", $submittedName)) {
+            $errorMsg = 'Full Name can only contain letters and spaces.';
+        } else {
+            $nameToSave = $submittedName;
+        }
+    }
+
+    $phoneToSave = ($submittedPhone !== '') ? $submittedPhone : ($existingUser['phone'] ?? null);
+    if ($errorMsg === '' && $submittedPhone !== '') {
+        $digitsOnly = preg_replace('/[^0-9]/', '', $submittedPhone);
+        if (strlen($submittedPhone) > 20) {
+            $errorMsg = 'Phone number cannot exceed 20 characters.';
+        } elseif (strlen($digitsOnly) < 10 || strlen($digitsOnly) > 15) {
+            $errorMsg = 'Phone number must contain between 10 and 15 digits.';
+        } elseif (!preg_match("/^[\+]?[0-9\s\-]+$/", $submittedPhone)) {
+            $errorMsg = 'Phone number can only contain digits, spaces, hyphens, and optional leading plus sign.';
+        } else {
+            $phoneToSave = $submittedPhone;
+        }
+    }
+
+    $dobToSave = ($submittedDob !== '') ? $submittedDob : ($existingProfile['dob'] ?? null);
+    if ($errorMsg === '' && $submittedDob !== '') {
+        $d = DateTime::createFromFormat('Y-m-d', $submittedDob);
+        if (!$d || $d->format('Y-m-d') !== $submittedDob) {
+            $errorMsg = 'Please enter a valid date of birth (YYYY-MM-DD).';
+        } elseif ($d > new DateTime('today')) {
+            $errorMsg = 'Date of birth cannot be in the future.';
+        } elseif ($d < new DateTime('1900-01-01')) {
+            $errorMsg = 'Date of birth must be after 1900.';
+        } else {
+            $dobToSave = $submittedDob;
+        }
+    }
+
+    $cityToSave = ($submittedCity !== '') ? $submittedCity : ($existingProfile['city'] ?? null);
+    if ($errorMsg === '' && $submittedCity !== '') {
+        if (strlen($submittedCity) < 2 || strlen($submittedCity) > 100) {
+            $errorMsg = 'City must be between 2 and 100 characters.';
+        } elseif (!preg_match("/^[a-zA-Z\s]+$/", $submittedCity)) {
+            $errorMsg = 'City can only contain letters and spaces.';
+        } else {
+            $cityToSave = $submittedCity;
+        }
+    }
+
+    $stateToSave = ($submittedState !== '') ? $submittedState : ($existingProfile['state'] ?? null);
+    if ($errorMsg === '' && $submittedState !== '') {
+        if (strlen($submittedState) < 2 || strlen($submittedState) > 100) {
+            $errorMsg = 'State must be between 2 and 100 characters.';
+        } elseif (!preg_match("/^[a-zA-Z\s]+$/", $submittedState)) {
+            $errorMsg = 'State can only contain letters and spaces.';
+        } else {
+            $stateToSave = $submittedState;
+        }
+    }
+
+    // Execute updates using procedural MySQLi prepared statements
+    if ($errorMsg === '') {
+        $userStmt = mysqli_prepare($con, "UPDATE users SET name = ?, phone = ?, updated_at = NOW() WHERE id = ?");
+        $userUpdated = false;
+        if ($userStmt) {
+            mysqli_stmt_bind_param($userStmt, "ssi", $nameToSave, $phoneToSave, $userId);
+            $userUpdated = mysqli_stmt_execute($userStmt);
+            mysqli_stmt_close($userStmt);
+        }
+
+        $profileStmt = mysqli_prepare($con, "UPDATE user_profiles SET dob = ?, city = ?, state = ?, updated_at = NOW() WHERE user_id = ?");
+        $profileUpdated = false;
+        if ($profileStmt) {
+            mysqli_stmt_bind_param($profileStmt, "sssi", $dobToSave, $cityToSave, $stateToSave, $userId);
+            $profileUpdated = mysqli_stmt_execute($profileStmt);
+            mysqli_stmt_close($profileStmt);
+        }
+
+        if ($userUpdated && $profileUpdated) {
+            $_SESSION['user_name'] = $nameToSave;
+            $_SESSION['profile_success'] = 'Profile updated successfully!';
+            header('Location: ' . baseUrl('user/profile.php'));
+            exit;
+        } else {
+            $errorMsg = 'Failed to save profile changes. Please try again.';
+        }
+    }
+}
+
+// 4. Calculate dynamic statistics
+$karmaPoints = (int) ($existingProfile['karma_points'] ?? 0);
+
+$rankQuery = mysqli_query($con, "SELECT COUNT(*) AS higher_count FROM user_profiles WHERE karma_points > $karmaPoints");
+$rankRow = $rankQuery ? mysqli_fetch_assoc($rankQuery) : null;
+$userRank = ($rankRow ? (int) $rankRow['higher_count'] : 0) + 1;
+
+$contribQuery = mysqli_query($con, "SELECT COUNT(*) AS total FROM contributions WHERE user_id = $userId AND payment_status IN ('completed', 'not_applicable') AND fulfillment_status != 'cancelled'");
+$contribRow = $contribQuery ? mysqli_fetch_assoc($contribQuery) : null;
+$totalContributions = $contribRow ? (int) $contribRow['total'] : 0;
+
+$volQuery = mysqli_query($con, "SELECT COALESCE(SUM(hours_completed), 0) AS total_hours FROM volunteer_activities WHERE user_id = $userId AND status = 'completed'");
+$volRow = $volQuery ? mysqli_fetch_assoc($volQuery) : null;
+$volunteerHours = ($volRow ? (float) $volRow['total_hours'] : 0) . 'h';
+
+$eventsQuery = mysqli_query($con, "SELECT COUNT(DISTINCT event_id) AS total_events FROM event_bookings WHERE user_id = $userId AND booking_status IN ('confirmed', 'attended')");
+$eventsRow = $eventsQuery ? mysqli_fetch_assoc($eventsQuery) : null;
+$eventsParticipated = $eventsRow ? (int) $eventsRow['total_events'] : 0;
+
+// 5. Construct view objects matching existing UI structure
+$userName = $existingUser['name'] ?? '';
+$userInitials = strtoupper(substr(trim($userName ?: 'U'), 0, 1));
+
+$user = (object)[
+    'name' => $userName,
+    'email' => $existingUser['email'] ?? '',
+    'phone' => !empty($existingUser['phone']) ? $existingUser['phone'] : '',
+    'dob' => !empty($existingProfile['dob']) ? $existingProfile['dob'] : '',
+    'city' => !empty($existingProfile['city']) ? $existingProfile['city'] : '',
+    'state' => !empty($existingProfile['state']) ? $existingProfile['state'] : '',
+    'role' => 'Member',
+    'initials' => $userInitials
+];
+
+$profileStats = (object)[
+    'karma_points' => number_format($karmaPoints),
+    'rank' => $userRank,
+    'contributions' => $totalContributions,
+    'volunteer_hours' => $volunteerHours,
+    'events_participated' => $eventsParticipated
+];
+
+$preferences = (object)[
+    'email_notifications' => !empty($existingProfile['email_notifications']),
+    'donation_updates' => !empty($existingProfile['donation_updates']),
+    'event_notifications' => !empty($existingProfile['event_notifications']),
+    'ngo_activity_updates' => !empty($existingProfile['ngo_activity_updates'])
+];
+
 ob_start();
-?>
-
-<?php
- 
-    $user = (object)[
-        'name' => 'Rajveer',
-        'email' => 'rajveer@example.com',
-        'phone' => '+91 98765 43210',
-        'dob' => '1995-05-15',
-        'city' => 'Ahmedabad',
-        'state' => 'Gujarat',
-        'role' => 'Member',
-        'initials' => 'R'
-    ];
-
-    $profileStats = (object)[
-        'karma_points' => '1,280',
-        'rank' => 10,
-        'contributions' => 8,
-        'volunteer_hours' => '12h',
-        'events_participated' => 4
-    ];
-
-    $preferences = (object)[
-        'email_notifications' => true,
-        'donation_updates' => true,
-        'event_notifications' => false,
-        'ngo_activity_updates' => true,
-    ];
 ?>
 
 
@@ -53,7 +235,27 @@ ob_start();
 
         </div>
 
+        <?php if (!empty($successMsg)): ?>
+            <div class="mb-6 rounded-xl border border-forest/20 bg-forest/10 p-4 text-sm font-medium text-forest flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <svg class="h-5 w-5 text-forest shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    <span><?= e($successMsg) ?></span>
+                </div>
+            </div>
+        <?php endif; ?>
 
+        <?php if (!empty($errorMsg)): ?>
+            <div class="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <svg class="h-5 w-5 text-red-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span><?= e($errorMsg) ?></span>
+                </div>
+            </div>
+        <?php endif; ?>
        
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
 
@@ -424,7 +626,7 @@ ob_start();
                     </h3>
 
 
-                    <div id="profileDisplayMode" class="mt-4">
+                    <div id="profileDisplayMode" class="mt-4 <?= $isEditMode ? 'hidden' : '' ?>">
                         <div class="flex flex-col border-b border-charcoal/5 py-3">
                             <span class="text-xs font-bold uppercase tracking-wider text-charcoal">Full Name</span>
                             <span class="mt-1 text-sm text-charcoal-light"><?= e($user->name) ?></span>
@@ -435,28 +637,28 @@ ob_start();
                         </div>
                         <div class="flex flex-col border-b border-charcoal/5 py-3">
                             <span class="text-xs font-bold uppercase tracking-wider text-charcoal">Phone Number</span>
-                            <span class="mt-1 text-sm text-charcoal-light"><?= e($user->phone) ?></span>
+                            <span class="mt-1 text-sm text-charcoal-light"><?= e($user->phone ?: 'Not provided') ?></span>
                         </div>
                         <div class="flex flex-col border-b border-charcoal/5 py-3">
                             <span class="text-xs font-bold uppercase tracking-wider text-charcoal">Date of Birth</span>
-                            <span class="mt-1 text-sm text-charcoal-light"><?= e($user->dob) ?></span>
+                            <span class="mt-1 text-sm text-charcoal-light"><?= e($user->dob ?: 'Not provided') ?></span>
                         </div>
                         <div class="flex flex-col border-b border-charcoal/5 py-3">
                             <span class="text-xs font-bold uppercase tracking-wider text-charcoal">City</span>
-                            <span class="mt-1 text-sm text-charcoal-light"><?= e($user->city) ?></span>
+                            <span class="mt-1 text-sm text-charcoal-light"><?= e($user->city ?: 'Not provided') ?></span>
                         </div>
                         <div class="flex flex-col py-3">
                             <span class="text-xs font-bold uppercase tracking-wider text-charcoal">State</span>
-                            <span class="mt-1 text-sm text-charcoal-light"><?= e($user->state) ?></span>
+                            <span class="mt-1 text-sm text-charcoal-light"><?= e($user->state ?: 'Not provided') ?></span>
                         </div>
                     </div>
 
 
                     <form
                         id="profileEditMode"
-                        action="#"
+                        action="<?= baseUrl('user/profile.php') ?>"
                         method="POST"
-                        class="mt-6 hidden validation-form"
+                        class="mt-6 <?= $isEditMode ? '' : 'hidden' ?> validation-form"
                     >
 
                         <div class="space-y-5">
@@ -478,7 +680,7 @@ ob_start();
                                     id="full_name"
                                     name="name"
                                     type="text"
-                                    value="<?= e($user->name) ?>"
+                                    value="<?= e($formName) ?>"
                                     data-validate="alpha"
                                     readonly
                                     class="w-full rounded-lg border
@@ -536,7 +738,7 @@ ob_start();
                                     id="phone"
                                     name="phone"
                                     type="text"
-                                    value="<?= e($user->phone) ?>"
+                                    value="<?= e($formPhone) ?>"
                                     class="w-full rounded-lg border
                                            border-charcoal/20
                                            bg-white px-4 py-3
@@ -567,7 +769,7 @@ ob_start();
                                     id="dob"
                                     name="dob"
                                     type="date"
-                                    value="<?= e($user->dob) ?>"
+                                    value="<?= e($formDob) ?>"
                                     class="w-full rounded-lg border
                                            border-charcoal/20
                                            bg-white px-4 py-3
@@ -598,7 +800,7 @@ ob_start();
                                     id="city"
                                     name="city"
                                     type="text"
-                                    value="<?= e($user->city) ?>"
+                                    value="<?= e($formCity) ?>"
                                     data-validate="alpha"
                                     class="w-full rounded-lg border
                                            border-charcoal/20
@@ -630,7 +832,7 @@ ob_start();
                                     id="state"
                                     name="state"
                                     type="text"
-                                    value="<?= e($user->state) ?>"
+                                    value="<?= e($formState) ?>"
                                     data-validate="alpha"
                                     class="w-full rounded-lg border
                                            border-charcoal/20
@@ -666,7 +868,7 @@ ob_start();
                             </button>
 
                             <button
-                                type="button"
+                                type="submit"
                                 id="saveProfileBtn"
                                 class="w-full md:w-1/2 rounded-full
                                        bg-forest px-6 py-3
@@ -994,9 +1196,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const displayMode = document.getElementById('profileDisplayMode');
     const editMode = document.getElementById('profileEditMode');
     const cancelBtn = document.getElementById('cancelEditBtn');
-    const saveBtn = document.getElementById('saveProfileBtn');
 
-    if (editBtn && displayMode && editMode && cancelBtn && saveBtn) {
+    if (editBtn && displayMode && editMode && cancelBtn) {
         editBtn.addEventListener('click', function() {
             displayMode.classList.add('hidden');
             editMode.classList.remove('hidden');
@@ -1008,13 +1209,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         cancelBtn.addEventListener('click', function() {
-            editMode.classList.add('hidden');
-            displayMode.classList.remove('hidden');
-        });
-
-        saveBtn.addEventListener('click', function() {
-            alert('Profile saved successfully!');
-            
             editMode.classList.add('hidden');
             displayMode.classList.remove('hidden');
         });

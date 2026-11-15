@@ -1,36 +1,90 @@
 <?php
-    $currentUser = (object)[
-        'name' => 'Rajveer',
-        'rank' => 10,
-        'karma_points' => '1,280'
-    ];
+require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../Database/db_config.php';
 
-    $leaderboard = [
-        (object)['rank' => 1, 'name' => 'Aarav Shah', 'karma_points' => '2,450', 'contributions' => 15, 'volunteer_hours' => '24h', 'is_current_user' => false],
-        (object)['rank' => 2, 'name' => 'Ananya Patel', 'karma_points' => '2,180', 'contributions' => 13, 'volunteer_hours' => '20h', 'is_current_user' => false],
-        (object)['rank' => 3, 'name' => 'Dev Mehta', 'karma_points' => '1,950', 'contributions' => 11, 'volunteer_hours' => '18h', 'is_current_user' => false],
-        (object)['rank' => 4, 'name' => 'Priya Shah', 'karma_points' => '1,760', 'contributions' => 10, 'volunteer_hours' => '16h', 'is_current_user' => false],
-        (object)['rank' => 5, 'name' => 'Rohan Patel', 'karma_points' => '1,620', 'contributions' => 9, 'volunteer_hours' => '14h', 'is_current_user' => false],
-        (object)['rank' => 6, 'name' => 'Neha Joshi', 'karma_points' => '1,540', 'contributions' => 9, 'volunteer_hours' => '13h', 'is_current_user' => false],
-        (object)['rank' => 7, 'name' => 'Karan Mehta', 'karma_points' => '1,430', 'contributions' => 8, 'volunteer_hours' => '12h', 'is_current_user' => false],
-        (object)['rank' => 8, 'name' => 'Isha Patel', 'karma_points' => '1,390', 'contributions' => 8, 'volunteer_hours' => '11h', 'is_current_user' => false],
-        (object)['rank' => 9, 'name' => 'Mehul Shah', 'karma_points' => '1,340', 'contributions' => 7, 'volunteer_hours' => '10h', 'is_current_user' => false],
-        (object)['rank' => 10, 'name' => 'Rajveer', 'karma_points' => '1,280', 'contributions' => 8, 'volunteer_hours' => '12h', 'is_current_user' => true],
-        (object)['rank' => 11, 'name' => 'Aisha Desai', 'karma_points' => '1,150', 'contributions' => 6, 'volunteer_hours' => '8h', 'is_current_user' => false],
-        (object)['rank' => 12, 'name' => 'Vikram Singh', 'karma_points' => '1,090', 'contributions' => 5, 'volunteer_hours' => '9h', 'is_current_user' => false],
-    ];
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
-    $topThree = array_slice($leaderboard, 0, 3);
-    $mainList = array_slice($leaderboard, 3);
+$loggedInUserId = (isset($_SESSION['user_id']) && strtolower(trim($_SESSION['user_role'] ?? '')) === 'user') ? (int) $_SESSION['user_id'] : 0;
 
-    $getInitials = function($name) {
-        $words = explode(' ', $name);
-        $initials = '';
-        foreach ($words as $word) {
+$currentUser = null;
+$leaderboard = [];
+
+// Query registered active members ordered by Karma points (highest rank 1)
+$sql = "
+    SELECT
+        u.id,
+        u.name,
+        COALESCE(up.karma_points, 0) AS karma_points,
+        (
+            SELECT COUNT(*)
+            FROM contributions c
+            WHERE c.user_id = u.id
+              AND c.payment_status IN ('completed', 'not_applicable')
+              AND c.fulfillment_status != 'cancelled'
+        ) AS contributions_count,
+        (
+            SELECT COALESCE(SUM(va.hours_completed), 0)
+            FROM volunteer_activities va
+            WHERE va.user_id = u.id
+              AND va.status = 'completed'
+        ) AS volunteer_hours
+    FROM users u
+    LEFT JOIN user_profiles up ON u.id = up.user_id
+    WHERE u.role = 'user'
+      AND u.status = 'active'
+    ORDER BY karma_points DESC, u.id ASC
+";
+
+$result = mysqli_query($con, $sql);
+$rank = 1;
+
+if ($result) {
+    while ($row = mysqli_fetch_assoc($result)) {
+        $userId = (int) $row['id'];
+        $karma = (int) $row['karma_points'];
+        $contribs = (int) $row['contributions_count'];
+        $volHours = (float) $row['volunteer_hours'];
+        $isCurrentUser = ($loggedInUserId > 0 && $userId === $loggedInUserId);
+
+        $userData = (object)[
+            'id' => $userId,
+            'rank' => $rank,
+            'name' => $row['name'] ?: 'Member',
+            'karma_points' => number_format($karma),
+            'contributions' => $contribs,
+            'volunteer_hours' => ($volHours > 0 ? $volHours : 0) . 'h',
+            'is_current_user' => $isCurrentUser
+        ];
+
+        if ($isCurrentUser) {
+            $currentUser = (object)[
+                'id' => $userId,
+                'name' => $userData->name,
+                'rank' => $rank,
+                'karma_points' => $userData->karma_points
+            ];
+        }
+
+        $leaderboard[] = $userData;
+        $rank++;
+    }
+}
+
+$topThree = array_slice($leaderboard, 0, 3);
+$mainList = array_slice($leaderboard, 3);
+
+$getInitials = function($name) {
+    $words = explode(' ', trim($name));
+    $initials = '';
+    foreach ($words as $word) {
+        if ($word !== '') {
             $initials .= strtoupper(substr($word, 0, 1));
         }
-        return substr($initials, 0, 2);
-    };
+    }
+    return substr($initials, 0, 2) ?: 'U';
+};
 ?>
 
 <div class="bg-ivory/40 min-h-screen py-8 sm:py-10 lg:py-12">
@@ -53,21 +107,39 @@
                     <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-gold/10 rounded-full blur-xl pointer-events-none"></div>
                     <div class="relative z-10">
                         <p class="text-[10px] font-bold uppercase tracking-wide text-ivory/80 mb-2">Your Rank</p>
-                        <div class="flex flex-col md:flex-row items-end gap-3 mb-4">
-                            <span class="text-4xl font-serif font-bold text-gold">#<?= e($currentUser->rank) ?></span>
-                        </div>
-                        <div class="flex flex-col md:flex-row items-center gap-3 mb-4">
-                            <div class="h-10 w-10 rounded-full bg-white text-forest flex flex-col md:flex-row items-center justify-center text-sm font-bold shadow-sm shrink-0">
-                                <?= e($getInitials($currentUser->name)) ?>
+                        <?php if ($currentUser): ?>
+                            <div class="flex flex-col md:flex-row items-end gap-3 mb-4">
+                                <span class="text-4xl font-serif font-bold text-gold">#<?= e($currentUser->rank) ?></span>
                             </div>
-                            <div class="min-w-0">
-                                <h3 class="font-bold text-white text-sm"><?= e($currentUser->name) ?></h3>
-                                <p class="text-xs text-gold font-medium"><?= e($currentUser->karma_points) ?> Karma Points</p>
+                            <div class="flex flex-col md:flex-row items-center gap-3 mb-4">
+                                <div class="h-10 w-10 rounded-full bg-white text-forest flex flex-col md:flex-row items-center justify-center text-sm font-bold shadow-sm shrink-0">
+                                    <?= e($getInitials($currentUser->name)) ?>
+                                </div>
+                                <div class="min-w-0">
+                                    <h3 class="font-bold text-white text-sm truncate"><?= e($currentUser->name) ?></h3>
+                                    <p class="text-xs text-gold font-medium"><?= e($currentUser->karma_points) ?> Karma Points</p>
+                                </div>
                             </div>
-                        </div>
-                        <div class="pt-4 border-t border-white/20">
-                            <p class="text-xs text-ivory/80 leading-relaxed">Keep contributing to climb the leaderboard.</p>
-                        </div>
+                            <div class="pt-4 border-t border-white/20">
+                                <p class="text-xs text-ivory/80 leading-relaxed">Keep contributing to climb the leaderboard.</p>
+                            </div>
+                        <?php else: ?>
+                            <div class="flex flex-col md:flex-row items-end gap-3 mb-4">
+                                <span class="text-2xl font-serif font-bold text-gold">Track Your Karma</span>
+                            </div>
+                            <div class="flex flex-col md:flex-row items-center gap-3 mb-4">
+                                <div class="h-10 w-10 rounded-full bg-white text-forest flex flex-col md:flex-row items-center justify-center text-sm font-bold shadow-sm shrink-0">
+                                    --
+                                </div>
+                                <div class="min-w-0">
+                                    <h3 class="font-bold text-white text-sm">Guest Visitor</h3>
+                                    <p class="text-xs text-ivory/70">Sign in to view your rank</p>
+                                </div>
+                            </div>
+                            <div class="pt-4 border-t border-white/20">
+                                <a href="<?= baseUrl('auth/login.php') ?>" class="inline-block text-xs font-bold text-forest bg-white hover:bg-ivory px-4 py-2 rounded-full transition shadow-sm">Sign In</a>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </div>
 
@@ -117,35 +189,42 @@
                 
                 <!-- TOP 3 CONTRIBUTORS -->
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <?php foreach($topThree as $index => $user): ?>
-                    <?php
-                        $isFirst = $user->rank === 1;
-                        $cardBg = $isFirst ? 'bg-gradient-to-br from-white to-ivory border-gold/40' : 'bg-white border-charcoal/10';
-                        $rankColor = $isFirst ? 'text-gold' : 'text-forest';
-                        $rankBg = $isFirst ? 'bg-gold/10' : 'bg-forest/5';
-                    ?>
-                    <div class="w-full <?= e($cardBg) ?> rounded-xl p-4 md:p-8 shadow-sm border flex flex-col items-center text-center relative overflow-hidden">
-                        <?php if($isFirst): ?>
-                            <div class="absolute -right-10 -top-10 w-32 h-32 bg-gold/10 rounded-full blur-2xl pointer-events-none"></div>
-                        <?php endif; ?>
-                        
-                        <div class="<?= e($rankBg) ?> text-xl font-serif font-bold <?= e($rankColor) ?> w-10 h-10 rounded-full flex flex-col md:flex-row items-center justify-center mx-auto mb-3 border border-white/50 shadow-sm shrink-0">
-                            #<?= e($user->rank) ?>
+                    <?php if (empty($topThree)): ?>
+                        <div class="col-span-1 sm:col-span-3 bg-white rounded-xl p-8 text-center border border-charcoal/10 shadow-sm">
+                            <p class="text-sm font-medium text-charcoal">No contributors found yet.</p>
+                            <p class="text-xs text-charcoal-light mt-1">Be the first to contribute or volunteer to earn Karma points!</p>
                         </div>
-                        
-                        <div class="h-12 w-12 rounded-full bg-forest text-white flex flex-col md:flex-row items-center justify-center text-sm font-bold mx-auto mb-3 shadow-sm shrink-0">
-                            <?= e($getInitials($user->name)) ?>
+                    <?php else: ?>
+                        <?php foreach($topThree as $index => $user): ?>
+                        <?php
+                            $isFirst = $user->rank === 1;
+                            $cardBg = $isFirst ? 'bg-gradient-to-br from-white to-ivory border-gold/40' : 'bg-white border-charcoal/10';
+                            $rankColor = $isFirst ? 'text-gold' : 'text-forest';
+                            $rankBg = $isFirst ? 'bg-gold/10' : 'bg-forest/5';
+                        ?>
+                        <div class="w-full <?= e($cardBg) ?> rounded-xl p-4 md:p-8 shadow-sm border flex flex-col items-center text-center relative overflow-hidden">
+                            <?php if($isFirst): ?>
+                                <div class="absolute -right-10 -top-10 w-32 h-32 bg-gold/10 rounded-full blur-2xl pointer-events-none"></div>
+                            <?php endif; ?>
+                            
+                            <div class="<?= e($rankBg) ?> text-xl font-serif font-bold <?= e($rankColor) ?> w-10 h-10 rounded-full flex flex-col md:flex-row items-center justify-center mx-auto mb-3 border border-white/50 shadow-sm shrink-0">
+                                #<?= e($user->rank) ?>
+                            </div>
+                            
+                            <div class="h-12 w-12 rounded-full bg-forest text-white flex flex-col md:flex-row items-center justify-center text-sm font-bold mx-auto mb-3 shadow-sm shrink-0">
+                                <?= e($getInitials($user->name)) ?>
+                            </div>
+                            
+                            <h3 class="font-bold text-charcoal text-sm mb-1 truncate max-w-full"><?= e($user->name) ?></h3>
+                            <p class="text-xs font-bold text-forest mb-3"><?= e($user->karma_points) ?> Karma Points</p>
+                            
+                            <div class="w-full pt-3 border-t border-charcoal/10 flex flex-col md:flex-row justify-between text-[10px] text-charcoal-light mt-auto">
+                                <span><?= e($user->contributions) ?> Contribs</span>
+                                <span><?= e($user->volunteer_hours) ?> Vol</span>
+                            </div>
                         </div>
-                        
-                        <h3 class="font-bold text-charcoal text-sm mb-1"><?= e($user->name) ?></h3>
-                        <p class="text-xs font-bold text-forest mb-3"><?= e($user->karma_points) ?> Karma Points</p>
-                        
-                        <div class="w-full pt-3 border-t border-charcoal/10 flex flex-col md:flex-row justify-between text-[10px] text-charcoal-light mt-auto">
-                            <span><?= e($user->contributions) ?> Contribs</span>
-                            <span><?= e($user->volunteer_hours) ?> Vol</span>
-                        </div>
-                    </div>
-                    <?php endforeach; ?>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </div>
 
                 <!-- COMPLETE LEADERBOARD TABLE -->
@@ -167,74 +246,84 @@
                     <div class="divide-y divide-charcoal/5">
                         
                         <!-- Main List (Ranks 4+) -->
-                        <?php foreach($mainList as $user): ?>
-                        <?php
-                            $rowClass = $user->is_current_user ? 'bg-forest/5 border-l-4 border-l-forest' : 'hover:bg-ivory/30 transition-colors border-l-4 border-l-transparent';
-                            $nameClass = $user->is_current_user ? 'text-forest' : 'text-charcoal';
-                        ?>
-                        
-                        <div class="w-full <?= e($rowClass) ?> border-b border-charcoal/5 last:border-b-0">
+                        <?php if (empty($mainList)): ?>
+                            <div class="px-5 py-8 text-center text-sm text-charcoal-light">
+                                <?php if (!empty($topThree)): ?>
+                                    All current contributors are featured in the top ranks above.
+                                <?php else: ?>
+                                    No contributors to display on the leaderboard yet.
+                                <?php endif; ?>
+                            </div>
+                        <?php else: ?>
+                            <?php foreach($mainList as $user): ?>
+                            <?php
+                                $rowClass = $user->is_current_user ? 'bg-forest/5 border-l-4 border-l-forest' : 'hover:bg-ivory/30 transition-colors border-l-4 border-l-transparent';
+                                $nameClass = $user->is_current_user ? 'text-forest' : 'text-charcoal';
+                            ?>
                             
-                          
-                            
-                            <!-- DESKTOP GRID -->
-                            <div class="hidden md:grid grid-cols-12 gap-2 px-4 py-3 items-center">
+                            <div class="w-full <?= e($rowClass) ?> border-b border-charcoal/5 last:border-b-0">
+                                
+                              
+                                
+                                <!-- DESKTOP GRID -->
+                                <div class="hidden md:grid grid-cols-12 gap-2 px-4 py-3 items-center">
 
-    <!-- Rank -->
-    <div class="col-span-1 text-center">
-        <span class="font-serif font-bold text-base text-charcoal-light">
-            #<?= e($user->rank) ?>
-        </span>
-    </div>
-
-    <!-- User -->
-    <div class="col-span-5 flex flex-col md:flex-row items-center gap-3 min-w-0">
-
-        <div class="h-10 w-10 rounded-full bg-forest text-white flex flex-col md:flex-row items-center justify-center text-[11px] font-bold shrink-0">
-            <?= e($getInitials($user->name)) ?>
+        <!-- Rank -->
+        <div class="col-span-1 text-center">
+            <span class="font-serif font-bold text-base text-charcoal-light">
+                #<?= e($user->rank) ?>
+            </span>
         </div>
 
-        <div class="flex flex-col md:flex-row items-center gap-2 min-w-0">
+        <!-- User -->
+        <div class="col-span-5 flex flex-col md:flex-row items-center gap-3 min-w-0">
 
-            <h4 class="font-bold text-sm <?= e($nameClass) ?> truncate">
-                <?= e($user->name) ?>
-            </h4>
+            <div class="h-10 w-10 rounded-full bg-forest text-white flex flex-col md:flex-row items-center justify-center text-[11px] font-bold shrink-0">
+                <?= e($getInitials($user->name)) ?>
+            </div>
 
-            <?php if ($user->is_current_user): ?>
-                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-forest text-white shrink-0">
-                    YOU
-                </span>
-            <?php endif; ?>
+            <div class="flex flex-col md:flex-row items-center gap-2 min-w-0">
+
+                <h4 class="font-bold text-sm <?= e($nameClass) ?> truncate">
+                    <?= e($user->name) ?>
+                </h4>
+
+                <?php if ($user->is_current_user): ?>
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-forest text-white shrink-0">
+                        YOU
+                    </span>
+                <?php endif; ?>
+
+            </div>
 
         </div>
 
-    </div>
+        <!-- Karma Points -->
+        <div class="col-span-2 text-right">
+            <span class="font-bold text-sm text-forest">
+                <?= e($user->karma_points) ?>
+            </span>
+        </div>
 
-    <!-- Karma Points -->
-    <div class="col-span-2 text-right">
-        <span class="font-bold text-sm text-forest">
-            <?= e($user->karma_points) ?>
-        </span>
-    </div>
+        <!-- Contributions -->
+        <div class="col-span-2 text-center">
+            <span class="text-sm font-medium text-charcoal">
+                <?= e($user->contributions) ?>
+            </span>
+        </div>
 
-    <!-- Contributions -->
-    <div class="col-span-2 text-center">
-        <span class="text-sm font-medium text-charcoal">
-            <?= e($user->contributions) ?>
-        </span>
-    </div>
+        <!-- Volunteer Hours -->
+        <div class="col-span-2 text-center">
+            <span class="text-sm font-medium text-charcoal">
+                <?= e($user->volunteer_hours) ?>
+            </span>
+        </div>
 
-    <!-- Volunteer Hours -->
-    <div class="col-span-2 text-center">
-        <span class="text-sm font-medium text-charcoal">
-            <?= e($user->volunteer_hours) ?>
-        </span>
     </div>
-
-</div>
-                                                        
-                        </div>
-                        <?php endforeach; ?>  
+                                                            
+                            </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>

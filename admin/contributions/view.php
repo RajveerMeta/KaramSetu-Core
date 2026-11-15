@@ -39,6 +39,12 @@ ob_start();
         </div>
     </div>
 
+    <?php if (!empty($adminContribMessage)): ?>
+        <div class="mb-6 p-4 rounded-xl <?= $adminContribType === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200' ?>">
+            <p class="text-sm font-medium"><?= e($adminContribMessage) ?></p>
+        </div>
+    <?php endif; ?>
+
     <!-- Contribution Summary -->
     <div class="bg-white rounded-xl border border-charcoal/10 shadow-sm overflow-hidden mb-6">
         <div class="p-6">
@@ -364,6 +370,41 @@ ob_start();
                             The current contribution status is <?= e(strtolower($status)) ?>.
                         <?php endif; ?>
                     </p>
+
+                    <?php if ($status === 'Pending'): ?>
+                        <div class="mt-5 pt-4 border-t border-charcoal/10 flex flex-col sm:flex-row gap-3">
+                            <?php if ($row['contribution_type'] === 'money'): ?>
+                                <form method="POST" class="inline">
+                                    <input type="hidden" name="action" value="verify_payment">
+                                    <button type="submit" class="w-full sm:w-auto px-4 py-2 bg-forest text-white rounded-lg text-xs font-bold hover:bg-forest-dark transition-colors shadow-sm">
+                                        Mark Payment Completed
+                                    </button>
+                                </form>
+                            <?php else: ?>
+                                <form method="POST" class="inline">
+                                    <input type="hidden" name="action" value="verify_resource">
+                                    <button type="submit" class="w-full sm:w-auto px-4 py-2 bg-forest text-white rounded-lg text-xs font-bold hover:bg-forest-dark transition-colors shadow-sm">
+                                        Verify & Mark Received
+                                    </button>
+                                </form>
+                            <?php endif; ?>
+                            <form method="POST" class="inline" onsubmit="return confirm('Are you sure you want to cancel this contribution?');">
+                                <input type="hidden" name="action" value="refund_contribution">
+                                <button type="submit" class="w-full sm:w-auto px-4 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg text-xs font-bold hover:bg-red-100 transition-colors">
+                                    Cancel Contribution
+                                </button>
+                            </form>
+                        </div>
+                    <?php elseif ($status === 'Completed'): ?>
+                        <div class="mt-5 pt-4 border-t border-charcoal/10">
+                            <form method="POST" onsubmit="return confirm('Are you sure you want to refund/cancel this completed contribution? Any awarded Karma points will be reversed.');">
+                                <input type="hidden" name="action" value="refund_contribution">
+                                <button type="submit" class="px-4 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg text-xs font-bold hover:bg-red-100 transition-colors">
+                                    Refund & Reverse Points
+                                </button>
+                            </form>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
 

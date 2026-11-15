@@ -256,6 +256,27 @@ if ($ngo_id > 0) {
             )
         );
     }
+
+    /* Volunteer Statistics */
+    $volStats = [
+        'total_volunteers' => 0,
+        'completed_activities' => 0,
+        'total_hours' => 0.0
+    ];
+
+    $volSql = "SELECT 
+                   COUNT(*) AS total_volunteers,
+                   COUNT(CASE WHEN status = 'completed' THEN 1 END) AS completed_activities,
+                   COALESCE(SUM(CASE WHEN status = 'completed' THEN hours_completed ELSE 0 END), 0) AS total_hours
+               FROM volunteer_activities
+               WHERE ngo_id = $ngo_id";
+    $volRes = mysqli_query($con, $volSql);
+    if ($volRes) {
+        $volRow = mysqli_fetch_assoc($volRes);
+        $volStats['total_volunteers'] = (int)$volRow['total_volunteers'];
+        $volStats['completed_activities'] = (int)$volRow['completed_activities'];
+        $volStats['total_hours'] = (float)$volRow['total_hours'];
+    }
 }
 
 /* =========================
@@ -655,6 +676,36 @@ ob_start();
                     <a href="<?= baseUrl('ngo/profile.php') ?>"
                        class="block mt-6 text-center text-sm font-bold text-gold hover:text-forest transition-colors">
                         Complete Profile &rarr;
+                    </a>
+
+                </div>
+
+                <!-- VOLUNTEER PARTICIPATION OVERVIEW -->
+                <div class="bg-white rounded-3xl p-4 md:p-6 shadow-sm border border-gold/20">
+
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-serif font-bold text-forest">
+                            Volunteer Participation
+                        </h3>
+                        <span class="text-xs font-bold text-gold uppercase tracking-wider">
+                            <?= $volStats['total_volunteers'] ?> Registered
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div class="bg-ivory/50 p-3 rounded-2xl border border-charcoal/5">
+                            <p class="text-[11px] font-bold uppercase text-charcoal-light mb-0.5">Completed</p>
+                            <p class="text-xl font-bold font-serif text-forest"><?= $volStats['completed_activities'] ?></p>
+                        </div>
+                        <div class="bg-ivory/50 p-3 rounded-2xl border border-charcoal/5">
+                            <p class="text-[11px] font-bold uppercase text-charcoal-light mb-0.5">Hours Given</p>
+                            <p class="text-xl font-bold font-serif text-forest"><?= $volStats['total_hours'] ?>h</p>
+                        </div>
+                    </div>
+
+                    <a href="<?= baseUrl('ngo/events/index.php') ?>"
+                       class="block text-center text-sm font-bold text-gold hover:text-forest transition-colors">
+                        Manage Event Volunteers &rarr;
                     </a>
 
                 </div>

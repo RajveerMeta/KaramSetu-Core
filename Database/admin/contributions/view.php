@@ -41,6 +41,82 @@ if (!$result || mysqli_num_rows($result) == 0) {
 
 $row = mysqli_fetch_assoc($result);
 
+/* Flash messages */
+$adminContribMessage = $_SESSION['admin_contrib_message'] ?? '';
+$adminContribType = $_SESSION['admin_contrib_type'] ?? '';
+unset($_SESSION['admin_contrib_message'], $_SESSION['admin_contrib_type']);
+
+/* Handle Admin Contribution Status Actions */
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {
+    $action = trim($_POST['action']);
+    $donorUserId = !empty($row['user_id']) ? (int)$row['user_id'] : 0;
+    $cType = $row['contribution_type'];
+
+    if ($action === 'verify_payment') {
+        if ($cType === 'money' && $row['payment_status'] === 'pending') {
+            mysqli_begin_transaction($con);
+            $upSql = "UPDATE contributions SET payment_status = 'completed', fulfillment_status = 'completed', updated_at = NOW() WHERE id = $id";
+            if (mysqli_query($con, $upSql)) {
+                $points = calculateMoneyKarmaPoints($row['monetary_amount']);
+                if ($donorUserId > 0 && $points > 0) {
+                    awardKarmaPoints($donorUserId, $points, 'donation_money', $id, "Karma points for ₹" . number_format((float)$row['monetary_amount'], 2) . " donation to " . ($row['ngo_name'] ?? 'NGO'));
+                }
+                mysqli_commit($con);
+                $_SESSION['admin_contrib_message'] = "Payment marked as completed successfully!" . ($points > 0 && $donorUserId > 0 ? " Awarded $points Karma points." : "");
+                $_SESSION['admin_contrib_type'] = 'success';
+            } else {
+                mysqli_rollback($con);
+                $_SESSION['admin_contrib_message'] = "Failed to update payment status.";
+                $_SESSION['admin_contrib_type'] = 'error';
+            }
+        }
+        header("Location: " . baseUrl("admin/contributions/view.php?id=$id"));
+        exit;
+    } elseif ($action === 'verify_resource') {
+        if ($cType !== 'money' && $row['fulfillment_status'] === 'pending') {
+            mysqli_begin_transaction($con);
+            $upSql = "UPDATE contributions SET fulfillment_status = 'completed', updated_at = NOW() WHERE id = $id";
+            if (mysqli_query($con, $upSql)) {
+                $points = 50;
+                if ($donorUserId > 0) {
+                    awardKarmaPoints($donorUserId, $points, 'donation_resource', $id, "Karma points for " . ucfirst($cType) . " donation to " . ($row['ngo_name'] ?? 'NGO'));
+                }
+                mysqli_commit($con);
+                $_SESSION['admin_contrib_message'] = ucfirst($cType) . " donation verified successfully!" . ($donorUserId > 0 ? " Awarded 50 Karma points." : "");
+                $_SESSION['admin_contrib_type'] = 'success';
+            } else {
+                mysqli_rollback($con);
+                $_SESSION['admin_contrib_message'] = "Failed to update fulfillment status.";
+                $_SESSION['admin_contrib_type'] = 'error';
+            }
+        }
+        header("Location: " . baseUrl("admin/contributions/view.php?id=$id"));
+        exit;
+    } elseif ($action === 'refund_contribution') {
+        mysqli_begin_transaction($con);
+        $upSql = "UPDATE contributions SET payment_status = 'failed', fulfillment_status = 'cancelled', updated_at = NOW() WHERE id = $id";
+        if (mysqli_query($con, $upSql)) {
+            $reversed = false;
+            if ($donorUserId > 0) {
+                $srcType = ($cType === 'money') ? 'donation_money' : 'donation_resource';
+                $revId = reverseKarmaPoints($donorUserId, $srcType, $id, "Points reversed due to refund/cancellation of contribution #" . $row['contribution_reference']);
+                if ($revId) {
+                    $reversed = true;
+                }
+            }
+            mysqli_commit($con);
+            $_SESSION['admin_contrib_message'] = "Contribution has been cancelled/refunded." . ($reversed ? " Awarded Karma points have been reversed." : "");
+            $_SESSION['admin_contrib_type'] = 'success';
+        } else {
+            mysqli_rollback($con);
+            $_SESSION['admin_contrib_message'] = "Failed to cancel/refund contribution.";
+            $_SESSION['admin_contrib_type'] = 'error';
+        }
+        header("Location: " . baseUrl("admin/contributions/view.php?id=$id"));
+        exit;
+    }
+}
+
 $contributionId = $row['contribution_reference'];
 $contributorName = $row['donor_name'];
 $contributorEmail = $row['donor_email'];

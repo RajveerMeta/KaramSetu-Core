@@ -203,7 +203,17 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['contribution_
         /* DATABASE INSERTION WITH TRANSACTION */
         if ($error_message === '') {
             $reference = 'KS-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -6));
-            $payment_status = ($type === 'money') ? 'pending' : 'not_applicable';
+            if ($type === 'money') {
+                if (isset($_POST['payment_status']) && strtolower(trim($_POST['payment_status'])) === 'completed') {
+                    $payment_status = 'completed';
+                } elseif (isset($_POST['simulate_payment']) && ($_POST['simulate_payment'] == '1' || $_POST['simulate_payment'] === 'true')) {
+                    $payment_status = 'completed';
+                } else {
+                    $payment_status = 'pending';
+                }
+            } else {
+                $payment_status = 'not_applicable';
+            }
             $fulfillment_status = 'pending';
             $monetary_amount_sql = ($type === 'money') ? $amount : "NULL";
 
@@ -297,6 +307,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['contribution_
                 }
 
                 if ($items_success) {
+                    if ($type === 'money' && $payment_status === 'completed' && $logged_in_user_id > 0) {
+                        $awardedPoints = calculateMoneyKarmaPoints($amount);
+                        if ($awardedPoints > 0) {
+                            $ngoTitle = !empty($ngo['name']) ? $ngo['name'] : 'organization';
+                            awardKarmaPoints($logged_in_user_id, $awardedPoints, 'donation_money', $contribution_id, "Karma points for ₹" . number_format($amount, 2) . " donation to " . $ngoTitle);
+                        }
+                    }
                     mysqli_commit($con);
                     header("Location: " . baseUrl('?page=contribute&id=' . $cause_id . '&success=1&ref=' . $reference));
                     exit;

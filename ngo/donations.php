@@ -48,6 +48,71 @@ if ($user_id > 0) {
         $ngoData = mysqli_fetch_assoc($ngoQuery);
         $ngo_id = (int) $ngoData['id'];
 
+        // Flash messages
+        $donationActionMsg = $_SESSION['ngo_donation_msg'] ?? '';
+        $donationActionType = $_SESSION['ngo_donation_type'] ?? '';
+        unset($_SESSION['ngo_donation_msg'], $_SESSION['ngo_donation_type']);
+
+        // Handle NGO Verification / Rejection of Donations
+        if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {
+            $action = trim($_POST['action']);
+            $contribId = isset($_POST['contribution_id']) ? (int)$_POST['contribution_id'] : 0;
+
+            if ($contribId > 0 && $ngo_id > 0) {
+                $cCheck = mysqli_query($con, "SELECT c.*, n.name AS ngo_name FROM contributions c INNER JOIN ngos n ON n.id = c.ngo_id WHERE c.id = $contribId AND c.ngo_id = $ngo_id LIMIT 1");
+                if ($cCheck && mysqli_num_rows($cCheck) > 0) {
+                    $cRow = mysqli_fetch_assoc($cCheck);
+                    $donorUserId = !empty($cRow['user_id']) ? (int)$cRow['user_id'] : 0;
+                    $cType = $cRow['contribution_type'];
+
+                    if ($action === 'verify_resource') {
+                        if ($cType !== 'money' && $cRow['fulfillment_status'] === 'pending') {
+                            mysqli_begin_transaction($con);
+                            $up = mysqli_query($con, "UPDATE contributions SET fulfillment_status = 'completed', updated_at = NOW() WHERE id = $contribId");
+                            if ($up) {
+                                $awarded = 0;
+                                if ($donorUserId > 0) {
+                                    $pts = 50; // 50 Karma points for resource donation on NGO verification
+                                    $tx = awardKarmaPoints($donorUserId, $pts, 'donation_resource', $contribId, "Karma points for " . ucfirst($cType) . " donation to " . ($cRow['ngo_name'] ?? 'NGO'));
+                                    if ($tx) {
+                                        $awarded = $pts;
+                                    }
+                                }
+                                mysqli_commit($con);
+                                $_SESSION['ngo_donation_msg'] = ucfirst($cType) . " contribution marked as received/completed!" . ($awarded > 0 ? " Awarded $awarded Karma points to contributor." : "");
+                                $_SESSION['ngo_donation_type'] = 'success';
+                            } else {
+                                mysqli_rollback($con);
+                                $_SESSION['ngo_donation_msg'] = "Failed to update contribution status.";
+                                $_SESSION['ngo_donation_type'] = 'error';
+                            }
+                        }
+                    } elseif ($action === 'cancel_resource') {
+                        mysqli_begin_transaction($con);
+                        $up = mysqli_query($con, "UPDATE contributions SET fulfillment_status = 'cancelled', updated_at = NOW() WHERE id = $contribId");
+                        if ($up) {
+                            $reversed = false;
+                            if ($donorUserId > 0) {
+                                $revId = reverseKarmaPoints($donorUserId, 'donation_resource', $contribId, "Points reversed due to cancellation of contribution #" . $cRow['contribution_reference']);
+                                if ($revId) {
+                                    $reversed = true;
+                                }
+                            }
+                            mysqli_commit($con);
+                            $_SESSION['ngo_donation_msg'] = "Contribution has been cancelled." . ($reversed ? " Awarded Karma points have been reversed." : "");
+                            $_SESSION['ngo_donation_type'] = 'success';
+                        } else {
+                            mysqli_rollback($con);
+                            $_SESSION['ngo_donation_msg'] = "Failed to cancel contribution.";
+                            $_SESSION['ngo_donation_type'] = 'error';
+                        }
+                    }
+                }
+            }
+            header("Location: " . baseUrl("ngo/donations.php" . (!empty($_SERVER['QUERY_STRING']) ? '?' . $_SERVER['QUERY_STRING'] : '')));
+            exit;
+        }
+
         // TOTAL CONTRIBUTIONS
         $totalQuery = mysqli_query(
             $con,
@@ -262,6 +327,12 @@ $statusClasses = [
             </div>
 
         <?php else: ?>
+
+            <?php if (!empty($donationActionMsg)): ?>
+                <div class="mb-6 p-4 rounded-xl <?= $donationActionType === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200' ?>">
+                    <p class="text-sm font-medium"><?= e($donationActionMsg) ?></p>
+                </div>
+            <?php endif; ?>
 
             <!-- SUMMARY CARDS -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:p-6 mb-10">
@@ -497,6 +568,7 @@ $statusClasses = [
                                     <th class="pb-4">Date</th>
                                     <th class="pb-4">Amount / Quantity</th>
                                     <th class="pb-4">Status</th>
+                                    <th class="pb-4 text-right pr-2">Action</th>
 
                                 </tr>
                             </thead>
@@ -612,6 +684,23 @@ $statusClasses = [
 
                                             </td>
 
+                                            <!-- ACTION -->
+                                            <td class="py-4 text-right pr-2">
+                                                <?php if ($contribution['contribution_type'] !== 'money' && $contribution['fulfillment_status'] === 'pending'): ?>
+                                                    <form method="POST" class="inline">
+                                                        <input type="hidden" name="action" value="verify_resource">
+                                                        <input type="hidden" name="contribution_id" value="<?= (int)$contribution['id'] ?>">
+                                                        <button type="submit" class="px-3 py-1.5 bg-forest text-white rounded-lg text-xs font-bold hover:bg-forest-dark transition-colors shadow-sm whitespace-nowrap">
+                                                            Mark Received
+                                                        </button>
+                                                    </form>
+                                                <?php elseif ($contribution['contribution_type'] !== 'money' && in_array($contribution['fulfillment_status'], ['received', 'completed'])): ?>
+                                                    <span class="text-xs text-forest font-bold">Verified (+50)</span>
+                                                <?php else: ?>
+                                                    <span class="text-xs text-charcoal-light">—</span>
+                                                <?php endif; ?>
+                                            </td>
+
                                         </tr>
 
                                     <?php endforeach; ?>
@@ -619,7 +708,7 @@ $statusClasses = [
                                 <?php else: ?>
 
                                     <tr>
-                                        <td colspan="5" class="text-center py-12 text-charcoal-light">
+                                        <td colspan="6" class="text-center py-12 text-charcoal-light">
 
                                             <div class="flex flex-col items-center">
 

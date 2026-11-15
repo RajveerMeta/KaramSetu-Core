@@ -28,7 +28,8 @@ if ($user_id > 0) {
 
         // Get upcoming events
         $upcomingQuery = "
-            SELECT *
+            SELECT events.*,
+                   (SELECT COUNT(*) FROM volunteer_activities va WHERE va.event_id = events.id) AS volunteer_count
             FROM events
             WHERE ngo_id = $ngo_id
             AND status = 'upcoming'
@@ -46,7 +47,8 @@ if ($user_id > 0) {
 
         // Get past events
         $pastQuery = "
-            SELECT *
+            SELECT events.*,
+                   (SELECT COUNT(*) FROM volunteer_activities va WHERE va.event_id = events.id) AS volunteer_count
             FROM events
             WHERE ngo_id = $ngo_id
             AND (
@@ -111,11 +113,17 @@ ob_start();
 
                         <div class="w-full min-w-0">
 
-                            <div class="flex justify-between items-start mb-3">
+                            <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
 
                                 <span class="inline-block px-2.5 py-1 bg-forest/10 text-forest text-xs font-bold uppercase tracking-wider rounded-md">
                                     Upcoming
                                 </span>
+
+                                <?php if (!empty($event['volunteer_count']) && (int)$event['volunteer_count'] > 0): ?>
+                                    <span class="inline-block px-2 py-0.5 bg-gold/15 text-forest text-[11px] font-bold rounded-md">
+                                        <?= (int)$event['volunteer_count'] ?> <?= (int)$event['volunteer_count'] === 1 ? 'Volunteer' : 'Volunteers' ?>
+                                    </span>
+                                <?php endif; ?>
 
                             </div>
 
