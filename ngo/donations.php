@@ -21,8 +21,8 @@ $typeFilter = $_GET['type'] ?? 'all';
 $statusFilter = $_GET['status'] ?? 'all';
 
 // ALLOWED FILTER VALUES
-$allowedTypes = ['all', 'money', 'food', 'clothes', 'items'];
-$allowedStatuses = ['all', 'received', 'pending'];
+$allowedTypes = ['all', 'money', 'resource', 'food', 'clothes', 'items'];
+$allowedStatuses = ['all', 'pending', 'received', 'completed', 'cancelled'];
 
 if (!in_array($typeFilter, $allowedTypes, true)) {
     $typeFilter = 'all';
@@ -65,10 +65,13 @@ if ($user_id > 0) {
                     $donorUserId = !empty($cRow['user_id']) ? (int)$cRow['user_id'] : 0;
                     $cType = $cRow['contribution_type'];
 
-                    if ($action === 'verify_resource') {
-                        if ($cType !== 'money' && $cRow['fulfillment_status'] === 'pending') {
+                    if ($cType === 'money') {
+                        $_SESSION['ngo_donation_msg'] = "Payment status cannot be modified manually. Monetary donations are reconciled automatically.";
+                        $_SESSION['ngo_donation_type'] = 'error';
+                    } elseif ($action === 'mark_received') {
+                        if ($cRow['fulfillment_status'] === 'pending') {
                             mysqli_begin_transaction($con);
-                            $up = mysqli_query($con, "UPDATE contributions SET fulfillment_status = 'completed', updated_at = NOW() WHERE id = $contribId");
+                            $up = mysqli_query($con, "UPDATE contributions SET fulfillment_status = 'received', updated_at = NOW() WHERE id = $contribId");
                             if ($up) {
                                 $awarded = 0;
                                 if ($donorUserId > 0) {
@@ -79,51 +82,87 @@ if ($user_id > 0) {
                                     }
                                 }
                                 mysqli_commit($con);
-                                $_SESSION['ngo_donation_msg'] = ucfirst($cType) . " contribution marked as received/completed!" . ($awarded > 0 ? " Awarded $awarded Karma points to contributor." : "");
+                                $_SESSION['ngo_donation_msg'] = ucfirst($cType) . " contribution marked as received!" . ($awarded > 0 ? " Awarded $awarded Karma points to contributor." : "");
                                 $_SESSION['ngo_donation_type'] = 'success';
                             } else {
                                 mysqli_rollback($con);
                                 $_SESSION['ngo_donation_msg'] = "Failed to update contribution status.";
                                 $_SESSION['ngo_donation_type'] = 'error';
                             }
-                        }
-                    } elseif ($action === 'cancel_resource') {
-                        mysqli_begin_transaction($con);
-                        $up = mysqli_query($con, "UPDATE contributions SET fulfillment_status = 'cancelled', updated_at = NOW() WHERE id = $contribId");
-                        if ($up) {
-                            $reversed = false;
-                            if ($donorUserId > 0) {
-                                $revId = reverseKarmaPoints($donorUserId, 'donation_resource', $contribId, "Points reversed due to cancellation of contribution #" . $cRow['contribution_reference']);
-                                if ($revId) {
-                                    $reversed = true;
-                                }
-                            }
-                            mysqli_commit($con);
-                            $_SESSION['ngo_donation_msg'] = "Contribution has been cancelled." . ($reversed ? " Awarded Karma points have been reversed." : "");
-                            $_SESSION['ngo_donation_type'] = 'success';
                         } else {
-                            mysqli_rollback($con);
-                            $_SESSION['ngo_donation_msg'] = "Failed to cancel contribution.";
+                            $_SESSION['ngo_donation_msg'] = "Invalid status transition. Only pending contributions can be marked as received.";
                             $_SESSION['ngo_donation_type'] = 'error';
                         }
+                    } elseif ($action === 'mark_completed' || $action === 'verify_resource') {
+                        if (in_array($cRow['fulfillment_status'], ['pending', 'received'], true)) {
+                            mysqli_begin_transaction($con);
+                            $up = mysqli_query($con, "UPDATE contributions SET fulfillment_status = 'completed', updated_at = NOW() WHERE id = $contribId");
+                            if ($up) {
+                                $awarded = 0;
+                                if ($donorUserId > 0) {
+                                    $pts = 50; // 50 Karma points for resource donation on NGO verification (duplicate awards prevented by helper)
+                                    $tx = awardKarmaPoints($donorUserId, $pts, 'donation_resource', $contribId, "Karma points for " . ucfirst($cType) . " donation to " . ($cRow['ngo_name'] ?? 'NGO'));
+                                    if ($tx) {
+                                        $awarded = $pts;
+                                    }
+                                }
+                                mysqli_commit($con);
+                                $_SESSION['ngo_donation_msg'] = ucfirst($cType) . " contribution marked as completed!" . ($awarded > 0 ? " Awarded $awarded Karma points to contributor." : "");
+                                $_SESSION['ngo_donation_type'] = 'success';
+                            } else {
+                                mysqli_rollback($con);
+                                $_SESSION['ngo_donation_msg'] = "Failed to update contribution status.";
+                                $_SESSION['ngo_donation_type'] = 'error';
+                            }
+                        } else {
+                            $_SESSION['ngo_donation_msg'] = "Invalid status transition. Completed or cancelled contributions cannot be modified.";
+                            $_SESSION['ngo_donation_type'] = 'error';
+                        }
+                    } elseif ($action === 'cancel_resource' || $action === 'cancel_contribution') {
+                        if ($cRow['fulfillment_status'] !== 'cancelled') {
+                            mysqli_begin_transaction($con);
+                            $up = mysqli_query($con, "UPDATE contributions SET fulfillment_status = 'cancelled', updated_at = NOW() WHERE id = $contribId");
+                            if ($up) {
+                                $reversed = false;
+                                if ($donorUserId > 0) {
+                                    $revId = reverseKarmaPoints($donorUserId, 'donation_resource', $contribId, "Points reversed due to cancellation of contribution #" . $cRow['contribution_reference']);
+                                    if ($revId) {
+                                        $reversed = true;
+                                    }
+                                }
+                                mysqli_commit($con);
+                                $_SESSION['ngo_donation_msg'] = "Contribution has been cancelled." . ($reversed ? " Awarded Karma points have been reversed." : "");
+                                $_SESSION['ngo_donation_type'] = 'success';
+                            } else {
+                                mysqli_rollback($con);
+                                $_SESSION['ngo_donation_msg'] = "Failed to cancel contribution.";
+                                $_SESSION['ngo_donation_type'] = 'error';
+                            }
+                        } else {
+                            $_SESSION['ngo_donation_msg'] = "Contribution is already cancelled.";
+                            $_SESSION['ngo_donation_type'] = 'error';
+                        }
+                    } else {
+                        $_SESSION['ngo_donation_msg'] = "Unrecognized action requested.";
+                        $_SESSION['ngo_donation_type'] = 'error';
                     }
+                } else {
+                    $_SESSION['ngo_donation_msg'] = "Contribution not found or access denied.";
+                    $_SESSION['ngo_donation_type'] = 'error';
                 }
             }
             header("Location: " . baseUrl("ngo/donations.php" . (!empty($_SERVER['QUERY_STRING']) ? '?' . $_SERVER['QUERY_STRING'] : '')));
             exit;
         }
 
-        // TOTAL CONTRIBUTIONS
+        // TOTAL CONTRIBUTIONS (Excluding failed payments and cancelled fulfillment)
         $totalQuery = mysqli_query(
             $con,
             "SELECT COUNT(*) AS total
              FROM contributions
              WHERE ngo_id = $ngo_id
-             AND NOT (
-                (contribution_type = 'money' AND payment_status = 'failed')
-                OR
-                (contribution_type != 'money' AND fulfillment_status = 'cancelled')
-             )"
+             AND fulfillment_status != 'cancelled'
+             AND NOT (contribution_type = 'money' AND payment_status = 'failed')"
         );
 
         if ($totalQuery) {
@@ -131,14 +170,15 @@ if ($user_id > 0) {
             $totalContributions = (int) $totalData['total'];
         }
 
-        // TOTAL MONEY RECEIVED
+        // TOTAL MONEY RECEIVED (Excluding cancelled fulfillment)
         $moneyQuery = mysqli_query(
             $con,
             "SELECT COALESCE(SUM(monetary_amount), 0) AS total_money
              FROM contributions
              WHERE ngo_id = $ngo_id
              AND contribution_type = 'money'
-             AND payment_status = 'completed'"
+             AND payment_status = 'completed'
+             AND fulfillment_status != 'cancelled'"
         );
 
         if ($moneyQuery) {
@@ -193,30 +233,41 @@ if ($user_id > 0) {
         // BUILD FILTER QUERY
         $filterCondition = "WHERE c.ngo_id = $ngo_id";
 
-        if ($typeFilter != 'all') {
+        if ($typeFilter === 'money') {
+            $filterCondition .= " AND c.contribution_type = 'money'";
+        } elseif ($typeFilter === 'resource') {
+            $filterCondition .= " AND c.contribution_type != 'money'";
+        } elseif (in_array($typeFilter, ['food', 'clothes', 'items'], true)) {
             $filterCondition .= " AND c.contribution_type = '$typeFilter'";
         }
 
-        if ($statusFilter == 'received') {
-
+        if ($statusFilter === 'pending') {
             $filterCondition .= "
                 AND (
-                    (c.contribution_type = 'money'
-                     AND c.payment_status = 'completed')
+                    (c.contribution_type = 'money' AND c.payment_status = 'pending')
                     OR
-                    (c.contribution_type != 'money'
-                     AND c.fulfillment_status IN ('received', 'completed'))
+                    (c.contribution_type != 'money' AND c.fulfillment_status = 'pending')
                 )";
-
-        } elseif ($statusFilter == 'pending') {
-
+        } elseif ($statusFilter === 'received') {
             $filterCondition .= "
                 AND (
-                    (c.contribution_type = 'money'
-                     AND c.payment_status = 'pending')
+                    (c.contribution_type = 'money' AND c.payment_status = 'completed')
                     OR
-                    (c.contribution_type != 'money'
-                     AND c.fulfillment_status = 'pending')
+                    (c.contribution_type != 'money' AND c.fulfillment_status = 'received')
+                )";
+        } elseif ($statusFilter === 'completed') {
+            $filterCondition .= "
+                AND (
+                    (c.contribution_type = 'money' AND c.payment_status = 'completed')
+                    OR
+                    (c.contribution_type != 'money' AND c.fulfillment_status = 'completed')
+                )";
+        } elseif ($statusFilter === 'cancelled') {
+            $filterCondition .= "
+                AND (
+                    c.fulfillment_status = 'cancelled'
+                    OR
+                    (c.contribution_type = 'money' AND c.payment_status = 'failed')
                 )";
         }
 
@@ -297,10 +348,10 @@ $typeClasses = [
 
 // STATUS COLORS
 $statusClasses = [
-    'received' => 'bg-forest/10 text-forest border border-forest/20',
-    'completed' => 'bg-forest/10 text-forest border border-forest/20',
+    'received' => 'bg-blue-50 text-blue-700 border border-blue-200',
+    'completed' => 'bg-green-50 text-forest border border-green-200',
     'pending' => 'bg-gold/15 text-charcoal border border-gold/30',
-    'failed' => 'bg-charcoal/10 text-charcoal border border-charcoal/20',
+    'failed' => 'bg-red-50 text-red-700 border border-red-200',
     'cancelled' => 'bg-charcoal/10 text-charcoal border border-charcoal/20',
     'not_applicable' => 'bg-ivory text-charcoal-light border border-charcoal/10'
 ];
@@ -479,11 +530,15 @@ $statusClasses = [
                             >
 
                                 <option value="all" <?= $typeFilter == 'all' ? 'selected' : '' ?>>
-                                    All
+                                    All Types
                                 </option>
 
                                 <option value="money" <?= $typeFilter == 'money' ? 'selected' : '' ?>>
                                     Money
+                                </option>
+
+                                <option value="resource" <?= $typeFilter == 'resource' ? 'selected' : '' ?>>
+                                    All Resources (Food, Clothes, Items)
                                 </option>
 
                                 <option value="food" <?= $typeFilter == 'food' ? 'selected' : '' ?>>
@@ -515,15 +570,23 @@ $statusClasses = [
                             >
 
                                 <option value="all" <?= $statusFilter == 'all' ? 'selected' : '' ?>>
-                                    All
+                                    All Statuses
+                                </option>
+
+                                <option value="pending" <?= $statusFilter == 'pending' ? 'selected' : '' ?>>
+                                    Pending
                                 </option>
 
                                 <option value="received" <?= $statusFilter == 'received' ? 'selected' : '' ?>>
                                     Received
                                 </option>
 
-                                <option value="pending" <?= $statusFilter == 'pending' ? 'selected' : '' ?>>
-                                    Pending
+                                <option value="completed" <?= $statusFilter == 'completed' ? 'selected' : '' ?>>
+                                    Completed
+                                </option>
+
+                                <option value="cancelled" <?= $statusFilter == 'cancelled' ? 'selected' : '' ?>>
+                                    Cancelled
                                 </option>
 
                             </select>
@@ -590,18 +653,21 @@ $statusClasses = [
                                         if ($contribution['is_anonymous'] == 1) {
                                             $donorName = 'Anonymous';
                                         } else {
-                                            $donorName = $contribution['donor_name'];
+                                            $donorName = !empty($contribution['donor_name']) ? $contribution['donor_name'] : 'Anonymous';
                                         }
 
                                         // AMOUNT AND STATUS
-                                        if ($type == 'money') {
-
+                                        if ($type === 'money') {
                                             $status = $contribution['payment_status'];
-
-                                            if ($status == 'completed') {
-                                                $statusLabel = 'Received';
-                                            } elseif ($status == 'not_applicable') {
-                                                $statusLabel = 'Not Applicable';
+                                            if ($contribution['fulfillment_status'] === 'cancelled') {
+                                                $status = 'cancelled';
+                                                $statusLabel = 'Cancelled';
+                                            } elseif ($status === 'completed') {
+                                                $statusLabel = 'Paid';
+                                            } elseif ($status === 'pending') {
+                                                $statusLabel = 'Pending Payment';
+                                            } elseif ($status === 'failed') {
+                                                $statusLabel = 'Failed';
                                             } else {
                                                 $statusLabel = ucfirst($status);
                                             }
@@ -610,16 +676,9 @@ $statusClasses = [
                                                 (float) $contribution['monetary_amount'],
                                                 2
                                             );
-
                                         } else {
-
                                             $status = $contribution['fulfillment_status'];
-
-                                            if ($status == 'received' || $status == 'completed') {
-                                                $statusLabel = 'Received';
-                                            } else {
-                                                $statusLabel = ucfirst($status);
-                                            }
+                                            $statusLabel = ucfirst($status);
 
                                             if (!empty($contribution['item_details'])) {
                                                 $amount = $contribution['item_details'];
@@ -629,7 +688,6 @@ $statusClasses = [
                                         }
 
                                         $typeClass = $typeClasses[$type] ?? 'bg-gray-100 text-gray-700';
-
                                         $statusClass = $statusClasses[$status] ?? 'bg-gray-100 text-gray-700';
                                         ?>
 
@@ -639,17 +697,17 @@ $statusClasses = [
                                             <td class="py-4 pl-2">
 
                                                 <div class="font-bold text-charcoal">
-                                                    <?= $donorName ?>
+                                                    <?= e($donorName) ?>
                                                 </div>
 
-                                                <div class="text-xs text-charcoal-light mt-1">
-                                                    <?= $contribution['contribution_reference'] ?>
+                                                <div class="text-xs text-charcoal-light mt-1 font-mono">
+                                                    <?= e($contribution['contribution_reference']) ?>
                                                 </div>
 
                                                 <?php if (!empty($contribution['cause_title'])): ?>
 
                                                     <div class="text-xs text-charcoal-light mt-1">
-                                                        Cause: <?= $contribution['cause_title'] ?>
+                                                        Cause: <?= e($contribution['cause_title']) ?>
                                                     </div>
 
                                                 <?php endif; ?>
@@ -672,7 +730,7 @@ $statusClasses = [
 
                                             <!-- AMOUNT / QUANTITY -->
                                             <td class="py-4 font-bold text-forest">
-                                                <?= $amount ?>
+                                                <?= e($amount) ?>
                                             </td>
 
                                             <!-- STATUS -->
@@ -686,19 +744,30 @@ $statusClasses = [
 
                                             <!-- ACTION -->
                                             <td class="py-4 text-right pr-2">
-                                                <?php if ($contribution['contribution_type'] !== 'money' && $contribution['fulfillment_status'] === 'pending'): ?>
-                                                    <form method="POST" class="inline">
-                                                        <input type="hidden" name="action" value="verify_resource">
-                                                        <input type="hidden" name="contribution_id" value="<?= (int)$contribution['id'] ?>">
-                                                        <button type="submit" class="px-3 py-1.5 bg-forest text-white rounded-lg text-xs font-bold hover:bg-forest-dark transition-colors shadow-sm whitespace-nowrap">
-                                                            Mark Received
-                                                        </button>
-                                                    </form>
-                                                <?php elseif ($contribution['contribution_type'] !== 'money' && in_array($contribution['fulfillment_status'], ['received', 'completed'])): ?>
-                                                    <span class="text-xs text-forest font-bold">Verified (+50)</span>
-                                                <?php else: ?>
-                                                    <span class="text-xs text-charcoal-light">—</span>
-                                                <?php endif; ?>
+                                                <div class="flex items-center justify-end gap-2 flex-wrap">
+                                                    <a href="<?= baseUrl('ngo/donation-details.php?id=' . (int)$contribution['id']) ?>"
+                                                       class="px-3 py-1.5 border border-forest/30 text-forest hover:bg-forest hover:text-white rounded-lg text-xs font-bold transition-colors shadow-sm whitespace-nowrap">
+                                                        View Details
+                                                    </a>
+
+                                                    <?php if ($contribution['contribution_type'] !== 'money' && $contribution['fulfillment_status'] === 'pending'): ?>
+                                                        <form method="POST" class="inline">
+                                                            <input type="hidden" name="action" value="mark_received">
+                                                            <input type="hidden" name="contribution_id" value="<?= (int)$contribution['id'] ?>">
+                                                            <button type="submit" class="px-2.5 py-1.5 bg-forest text-white rounded-lg text-xs font-bold hover:bg-forest-dark transition-colors shadow-sm whitespace-nowrap">
+                                                                Receive
+                                                            </button>
+                                                        </form>
+                                                    <?php elseif ($contribution['contribution_type'] !== 'money' && $contribution['fulfillment_status'] === 'received'): ?>
+                                                        <form method="POST" class="inline">
+                                                            <input type="hidden" name="action" value="mark_completed">
+                                                            <input type="hidden" name="contribution_id" value="<?= (int)$contribution['id'] ?>">
+                                                            <button type="submit" class="px-2.5 py-1.5 bg-green-600 text-white rounded-lg text-xs font-bold hover:bg-green-700 transition-colors shadow-sm whitespace-nowrap">
+                                                                Complete
+                                                            </button>
+                                                        </form>
+                                                    <?php endif; ?>
+                                                </div>
                                             </td>
 
                                         </tr>

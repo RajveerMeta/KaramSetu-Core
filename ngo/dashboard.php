@@ -28,8 +28,13 @@ if ($user_id > 0) {
 $dashboardData = [
     'total_funds_raised' => '₹0',
     'active_causes' => 0,
+    'completed_causes' => 0,
+    'total_events' => 0,
     'upcoming_events_count' => 0,
+    'completed_events' => 0,
+    'cancelled_events' => 0,
     'total_contributions' => 0,
+    'resource_contributions' => 0,
     'fundraising_raised' => 0,
     'fundraising_goal' => 0,
     'fundraising_progress' => 0,
@@ -51,7 +56,8 @@ if ($ngo_id > 0) {
             FROM contributions
             WHERE ngo_id = $ngo_id
             AND contribution_type = 'money'
-            AND payment_status = 'completed'";
+            AND payment_status = 'completed'
+            AND fulfillment_status != 'cancelled'";
 
     $result = mysqli_query($con, $sql);
 
@@ -64,31 +70,38 @@ if ($ngo_id > 0) {
             '₹' . number_format($dashboardData['fundraising_raised']);
     }
 
-    /* Active Causes Count */
+    /* Active & Completed Causes Count */
 
-    $sql = "SELECT COUNT(*) AS total
+    $sql = "SELECT 
+                COUNT(CASE WHEN status = 'active' THEN 1 END) AS active_total,
+                COUNT(CASE WHEN status = 'completed' THEN 1 END) AS completed_total
             FROM causes
-            WHERE ngo_id = $ngo_id
-            AND status = 'active'";
-
-    $result = mysqli_query($con, $sql);
-
-    if ($result) {
-        $row = mysqli_fetch_assoc($result);
-        $dashboardData['active_causes'] = (int) $row['total'];
-    }
-
-    /* Total Contributions */
-
-    $sql = "SELECT COUNT(*) AS total
-            FROM contributions
             WHERE ngo_id = $ngo_id";
 
     $result = mysqli_query($con, $sql);
 
     if ($result) {
         $row = mysqli_fetch_assoc($result);
-        $dashboardData['total_contributions'] = (int) $row['total'];
+        $dashboardData['active_causes'] = (int) $row['active_total'];
+        $dashboardData['completed_causes'] = (int) $row['completed_total'];
+    }
+
+    /* Total & Resource Contributions (excluding failed and cancelled) */
+
+    $sql = "SELECT 
+                COUNT(*) AS total_count,
+                COUNT(CASE WHEN contribution_type != 'money' THEN 1 END) AS resource_count
+            FROM contributions
+            WHERE ngo_id = $ngo_id
+            AND fulfillment_status != 'cancelled'
+            AND NOT (contribution_type = 'money' AND payment_status = 'failed')";
+
+    $result = mysqli_query($con, $sql);
+
+    if ($result) {
+        $row = mysqli_fetch_assoc($result);
+        $dashboardData['total_contributions'] = (int) $row['total_count'];
+        $dashboardData['resource_contributions'] = (int) $row['resource_count'];
     }
 
     /* Total Fundraising Goal */
@@ -105,25 +118,32 @@ if ($ngo_id > 0) {
         $dashboardData['fundraising_goal'] = (float) $row['total'];
     }
 
-    /* Upcoming Events Count */
+    /* Event Counts: Total, Upcoming, Completed, Cancelled */
 
-    $sql = "SELECT COUNT(*) AS total
+    $sql = "SELECT 
+                COUNT(*) AS total_events,
+                COUNT(CASE WHEN status = 'upcoming' AND event_date >= CURDATE() THEN 1 END) AS upcoming_count,
+                COUNT(CASE WHEN status != 'cancelled' AND (status = 'completed' OR event_date < CURDATE()) THEN 1 END) AS completed_count,
+                COUNT(CASE WHEN status = 'cancelled' THEN 1 END) AS cancelled_count
             FROM events
-            WHERE ngo_id = $ngo_id
-            AND event_date >= CURDATE()";
+            WHERE ngo_id = $ngo_id";
 
     $result = mysqli_query($con, $sql);
 
     if ($result) {
         $row = mysqli_fetch_assoc($result);
-        $dashboardData['upcoming_events_count'] = (int) $row['total'];
+        $dashboardData['total_events'] = (int) $row['total_events'];
+        $dashboardData['upcoming_events_count'] = (int) $row['upcoming_count'];
+        $dashboardData['completed_events'] = (int) $row['completed_count'];
+        $dashboardData['cancelled_events'] = (int) $row['cancelled_count'];
     }
 
-    /* Upcoming Events List */
+    /* Upcoming Events List (Strictly status = 'upcoming' and event_date >= CURDATE()) */
 
     $sql = "SELECT *
             FROM events
             WHERE ngo_id = $ngo_id
+            AND status = 'upcoming'
             AND event_date >= CURDATE()
             ORDER BY event_date ASC
             LIMIT 2";
@@ -136,7 +156,7 @@ if ($ngo_id > 0) {
         }
     }
 
-    /* Recent Contributions */
+    /* Recent Contributions (Excluding failed and cancelled) */
 
     $sql = "SELECT
                 c.id,
@@ -157,6 +177,8 @@ if ($ngo_id > 0) {
                 GROUP BY contribution_id
             ) items ON items.contribution_id = c.id
             WHERE c.ngo_id = $ngo_id
+            AND c.fulfillment_status != 'cancelled'
+            AND NOT (c.contribution_type = 'money' AND c.payment_status = 'failed')
             ORDER BY c.created_at DESC
             LIMIT 5";
 
@@ -209,6 +231,7 @@ if ($ngo_id > 0) {
                     CASE
                         WHEN con.contribution_type = 'money'
                         AND con.payment_status = 'completed'
+                        AND con.fulfillment_status != 'cancelled'
                         THEN con.monetary_amount
                         ELSE 0
                     END
@@ -259,23 +282,29 @@ if ($ngo_id > 0) {
 
     /* Volunteer Statistics */
     $volStats = [
-        'total_volunteers' => 0,
+        'registered_volunteers' => 0,
         'completed_activities' => 0,
-        'total_hours' => 0.0
+        'cancelled_activities' => 0,
+        'total_hours' => 0.0,
+        'total_volunteers' => 0
     ];
 
     $volSql = "SELECT 
-                   COUNT(*) AS total_volunteers,
+                   COUNT(CASE WHEN status = 'registered' THEN 1 END) AS registered_volunteers,
                    COUNT(CASE WHEN status = 'completed' THEN 1 END) AS completed_activities,
-                   COALESCE(SUM(CASE WHEN status = 'completed' THEN hours_completed ELSE 0 END), 0) AS total_hours
+                   COUNT(CASE WHEN status = 'cancelled' THEN 1 END) AS cancelled_activities,
+                   COALESCE(SUM(CASE WHEN status = 'completed' THEN hours_completed ELSE 0 END), 0) AS total_hours,
+                   COUNT(DISTINCT CASE WHEN status != 'cancelled' THEN user_id END) AS total_volunteers
                FROM volunteer_activities
                WHERE ngo_id = $ngo_id";
     $volRes = mysqli_query($con, $volSql);
     if ($volRes) {
         $volRow = mysqli_fetch_assoc($volRes);
-        $volStats['total_volunteers'] = (int)$volRow['total_volunteers'];
+        $volStats['registered_volunteers'] = (int)$volRow['registered_volunteers'];
         $volStats['completed_activities'] = (int)$volRow['completed_activities'];
+        $volStats['cancelled_activities'] = (int)$volRow['cancelled_activities'];
         $volStats['total_hours'] = (float)$volRow['total_hours'];
+        $volStats['total_volunteers'] = (int)$volRow['total_volunteers'];
     }
 }
 
@@ -405,7 +434,7 @@ ob_start();
                                 Recent Contributions
                             </h2>
 
-                            <a href="<?= baseUrl('ngo/contributions.php') ?>"
+                            <a href="<?= baseUrl('ngo/donations.php') ?>"
                                class="text-sm font-bold text-gold hover:text-forest transition-colors">
                                 View All
                             </a>
@@ -539,7 +568,7 @@ ob_start();
 
                                     <div>
                                         <span class="inline-block px-2.5 py-1 bg-forest/10 text-forest text-xs font-bold uppercase tracking-wider rounded-md mb-3">
-                                            <?= $event['type'] ?? 'Event' ?>
+                                            <?= !empty($event['category']) ? e($event['category']) : (!empty($event['type']) ? e($event['type']) : 'Event') ?>
                                         </span>
 
                                         <h3 class="text-lg font-serif font-bold text-forest mb-2 leading-snug">
@@ -688,7 +717,7 @@ ob_start();
                             Volunteer Participation
                         </h3>
                         <span class="text-xs font-bold text-gold uppercase tracking-wider">
-                            <?= $volStats['total_volunteers'] ?> Registered
+                            <?= (int)$volStats['registered_volunteers'] ?> Registered
                         </span>
                     </div>
 
@@ -761,7 +790,7 @@ ob_start();
                             <span class="text-sm font-bold text-charcoal">Create Event</span>
                         </a>
 
-                        <a href="<?= baseUrl('ngo/contributions.php') ?>"
+                        <a href="<?= baseUrl('ngo/donations.php') ?>"
                            class="flex items-center p-3 rounded-xl hover:bg-ivory transition-colors group">
 
                             <div class="w-8 h-8 rounded-lg bg-forest/10 text-forest flex items-center justify-center mr-3 group-hover:bg-forest group-hover:text-gold transition-colors">

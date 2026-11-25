@@ -8,10 +8,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-function escapeNgoValue($value)
-{
-    return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
-}
+
 
 $ngoId = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
 

@@ -86,14 +86,6 @@ ob_start();
     </div>
 </div>
 
-<script>
-$(document).ready(function () {
-    $('#LoginForm').off('validationSuccess').on('validationSuccess', function () {
-        HTMLFormElement.prototype.submit.call(this);
-    });
-});
-</script>
-
 <?php
 $content = ob_get_clean();
 require_once __DIR__ . '/../includes/layouts/main.php';
