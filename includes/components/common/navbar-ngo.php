@@ -1,3 +1,14 @@
+<?php
+$ngoSessionUserId = (int)($_SESSION['user_id'] ?? 0);
+$ngoNavUserStatus = $ngoSessionUserId > 0 ? getUserAccountStatus($ngoSessionUserId) : null;
+$ngoNavRecord = (isset($ngo) && is_array($ngo) && isset($ngo['verification_status'])) ? $ngo : ($ngoSessionUserId > 0 ? getNgoRecordForUser($ngoSessionUserId) : null);
+$isApprovedNgoNav = (
+    $ngoNavUserStatus &&
+    $ngoNavRecord &&
+    strtolower(trim($ngoNavUserStatus['status'] ?? '')) === 'active' &&
+    strtolower(trim($ngoNavRecord['verification_status'] ?? '')) === 'approved'
+);
+?>
 <nav class="sticky top-0 z-50 bg-ivory/90 backdrop-blur-md border-b border-gold/20" id="mainNavbar">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex items-center justify-between w-full h-20">
@@ -11,11 +22,15 @@
 
             <div class="hidden md:flex flex-1 items-center justify-center">
                 <div class="flex items-center justify-center space-x-4 lg:space-x-8 px-4 desktop-nav-ngo">
-                    <a href="<?= baseUrl('ngo/dashboard.php') ?>" class="text-charcoal hover:text-forest transition-colors text-sm font-medium tracking-wide whitespace-nowrap">Dashboard</a>
-                    <a href="<?= baseUrl('ngo/causes.php') ?>" class="text-charcoal hover:text-forest transition-colors text-sm font-medium tracking-wide whitespace-nowrap">Causes</a>
-                    <a href="<?= baseUrl('ngo/events/index.php') ?>" class="text-charcoal hover:text-forest transition-colors text-sm font-medium tracking-wide whitespace-nowrap">Events</a>
-                    <a href="<?= baseUrl('ngo/donations.php') ?>" class="text-charcoal hover:text-forest transition-colors text-sm font-medium tracking-wide whitespace-nowrap">Contributions</a>
-                    <a href="<?= baseUrl('ngo/profile.php') ?>" class="text-charcoal hover:text-forest transition-colors text-sm font-medium tracking-wide whitespace-nowrap">Profile</a>
+                    <?php if ($isApprovedNgoNav): ?>
+                        <a href="<?= baseUrl('ngo/dashboard.php') ?>" class="text-charcoal hover:text-forest transition-colors text-sm font-medium tracking-wide whitespace-nowrap">Dashboard</a>
+                        <a href="<?= baseUrl('ngo/causes.php') ?>" class="text-charcoal hover:text-forest transition-colors text-sm font-medium tracking-wide whitespace-nowrap">Causes</a>
+                        <a href="<?= baseUrl('ngo/events/index.php') ?>" class="text-charcoal hover:text-forest transition-colors text-sm font-medium tracking-wide whitespace-nowrap">Events</a>
+                        <a href="<?= baseUrl('ngo/donations.php') ?>" class="text-charcoal hover:text-forest transition-colors text-sm font-medium tracking-wide whitespace-nowrap">Contributions</a>
+                        <a href="<?= baseUrl('ngo/profile.php') ?>" class="text-charcoal hover:text-forest transition-colors text-sm font-medium tracking-wide whitespace-nowrap">Profile</a>
+                    <?php else: ?>
+                        <a href="<?= baseUrl('ngo/application-status.php') ?>" class="text-charcoal hover:text-forest transition-colors text-sm font-medium tracking-wide whitespace-nowrap">Application Status</a>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -36,8 +51,12 @@
                     
                     <!-- Dropdown menu -->
                     <div id="ngoDropdownMenu" style="display:none;" class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-charcoal/10 overflow-hidden z-50 py-2">
-                        <a href="<?= baseUrl('ngo/dashboard.php') ?>" class="block px-4 py-2 text-sm text-charcoal hover:bg-ivory-dark hover:text-forest transition-colors">NGO Dashboard</a>
-                        <a href="<?= baseUrl('ngo/profile.php') ?>" class="block px-4 py-2 text-sm text-charcoal hover:bg-ivory-dark hover:text-forest transition-colors">Manage Profile</a>
+                        <?php if ($isApprovedNgoNav): ?>
+                            <a href="<?= baseUrl('ngo/dashboard.php') ?>" class="block px-4 py-2 text-sm text-charcoal hover:bg-ivory-dark hover:text-forest transition-colors">NGO Dashboard</a>
+                            <a href="<?= baseUrl('ngo/profile.php') ?>" class="block px-4 py-2 text-sm text-charcoal hover:bg-ivory-dark hover:text-forest transition-colors">Manage Profile</a>
+                        <?php else: ?>
+                            <a href="<?= baseUrl('ngo/application-status.php') ?>" class="block px-4 py-2 text-sm text-charcoal hover:bg-ivory-dark hover:text-forest transition-colors">Application Status</a>
+                        <?php endif; ?>
                         <div class="border-t border-charcoal/5 my-1"></div>
                         <a href="<?= baseUrl('auth/logout.php') ?>" class="logout-btn block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors font-medium">Logout</a>
                     </div>
@@ -59,11 +78,15 @@
     <!-- Mobile Menu Panel -->
     <div id="mobileMenuPanel" class="md:hidden hidden bg-white border-t border-gold/20 pb-4 absolute left-0 right-0 top-full w-full shadow-lg">
         <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3 mobile-nav-ngo">
-            <a href="<?= baseUrl('ngo/dashboard.php') ?>" class="mobile-link block px-3 py-2 rounded-md text-base font-medium text-charcoal hover:text-forest hover:bg-ivory-dark">Dashboard</a>
-            <a href="<?= baseUrl('ngo/causes.php') ?>" class="mobile-link block px-3 py-2 rounded-md text-base font-medium text-charcoal hover:text-forest hover:bg-ivory-dark">Causes</a>
-            <a href="<?= baseUrl('ngo/events/index.php') ?>" class="mobile-link block px-3 py-2 rounded-md text-base font-medium text-charcoal hover:text-forest hover:bg-ivory-dark">Events</a>
-            <a href="<?= baseUrl('ngo/donations.php') ?>" class="mobile-link block px-3 py-2 rounded-md text-base font-medium text-charcoal hover:text-forest hover:bg-ivory-dark">Contributions</a>
-            <a href="<?= baseUrl('ngo/profile.php') ?>" class="mobile-link block px-3 py-2 rounded-md text-base font-medium text-charcoal hover:text-forest hover:bg-ivory-dark">Profile</a>
+            <?php if ($isApprovedNgoNav): ?>
+                <a href="<?= baseUrl('ngo/dashboard.php') ?>" class="mobile-link block px-3 py-2 rounded-md text-base font-medium text-charcoal hover:text-forest hover:bg-ivory-dark">Dashboard</a>
+                <a href="<?= baseUrl('ngo/causes.php') ?>" class="mobile-link block px-3 py-2 rounded-md text-base font-medium text-charcoal hover:text-forest hover:bg-ivory-dark">Causes</a>
+                <a href="<?= baseUrl('ngo/events/index.php') ?>" class="mobile-link block px-3 py-2 rounded-md text-base font-medium text-charcoal hover:text-forest hover:bg-ivory-dark">Events</a>
+                <a href="<?= baseUrl('ngo/donations.php') ?>" class="mobile-link block px-3 py-2 rounded-md text-base font-medium text-charcoal hover:text-forest hover:bg-ivory-dark">Contributions</a>
+                <a href="<?= baseUrl('ngo/profile.php') ?>" class="mobile-link block px-3 py-2 rounded-md text-base font-medium text-charcoal hover:text-forest hover:bg-ivory-dark">Profile</a>
+            <?php else: ?>
+                <a href="<?= baseUrl('ngo/application-status.php') ?>" class="mobile-link block px-3 py-2 rounded-md text-base font-medium text-charcoal hover:text-forest hover:bg-ivory-dark">Application Status</a>
+            <?php endif; ?>
         </div>
     </div>
 </nav>

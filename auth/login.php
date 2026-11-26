@@ -1,5 +1,9 @@
 <?php
 require_once __DIR__ . '/../includes/functions.php';
+if (!empty($_SESSION['user_id'])) {
+    redirectUserToHomeDashboard();
+}
+$csrfToken = getCsrfToken();
 ob_start();
 ?>
 
@@ -19,6 +23,7 @@ ob_start();
             
             <form id="LoginForm" class="space-y-6 validation-form" action="<?= baseUrl('Database/User/auth/login_form.php') ?>" method="POST" novalidate>
                 <input type="hidden" name="login" value="1">
+                <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
                 
                 <div id="loginErrorMsg" class="hidden mb-4 p-4 rounded-lg bg-red-50 border border-red-200">
                     <p class="text-sm font-medium text-red-600">Invalid credentials.</p>
@@ -57,6 +62,20 @@ ob_start();
                 </div>
 
                 <?php
+                if (isset($_SESSION["reset_pw_success"])) {
+                    echo '<p class="text-forest text-sm mt-2 font-medium">'
+                        . e($_SESSION["reset_pw_success"])
+                        . '</p>';
+
+                    unset($_SESSION["reset_pw_success"]);
+                }
+                if (isset($_SESSION["register_success"])) {
+                    echo '<p class="text-forest text-sm mt-2 font-medium">'
+                        . e($_SESSION["register_success"])
+                        . '</p>';
+
+                    unset($_SESSION["register_success"]);
+                }
                 if (isset($_SESSION["login_error"])) {
                     echo '<p class="text-red-600 text-sm mt-2">'
                         . e($_SESSION["login_error"])

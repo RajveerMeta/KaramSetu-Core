@@ -514,9 +514,9 @@ ob_start();
                             </div>
 
 
-                            <button
-                                type="button"
-                                class="shrink-0 rounded-md
+                            <a
+                                href="<?= baseUrl('index.php?page=change-password') ?>"
+                                class="inline-block shrink-0 rounded-md
                                        border border-charcoal/20
                                        px-4 py-1.5 text-xs font-bold
                                        text-charcoal
@@ -524,7 +524,7 @@ ob_start();
                                        hover:bg-ivory"
                             >
                                 Change
-                            </button>
+                            </a>
 
                         </div>
 

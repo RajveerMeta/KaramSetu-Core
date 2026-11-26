@@ -68,10 +68,16 @@ if (!function_exists('redirectUserToHomeDashboard')) {
         } elseif ($role === 'ngo') {
             $userId = (int)($_SESSION['user_id'] ?? 0);
             $userStatus = getUserAccountStatus($userId);
-            if ($userStatus && $userStatus['status'] === 'pending') {
-                header('Location: ' . baseUrl('ngo/application-status.php'));
-            } else {
+            $ngo = getNgoRecordForUser($userId);
+            $userStat = strtolower(trim($userStatus['status'] ?? ''));
+            $ngoStat = strtolower(trim($ngo['verification_status'] ?? ''));
+
+            if (!$userStatus || !$ngo || $userStat === 'suspended' || $ngoStat === 'suspended') {
+                header('Location: ' . baseUrl('auth/logout.php'));
+            } elseif ($userStat === 'active' && $ngoStat === 'approved') {
                 header('Location: ' . baseUrl('ngo/dashboard.php'));
+            } else {
+                header('Location: ' . baseUrl('ngo/application-status.php'));
             }
         } elseif ($role === 'user') {
             header('Location: ' . baseUrl('user/dashboard.php'));
@@ -443,6 +449,84 @@ if (!function_exists('getUserRecentKarmaTransactions')) {
             mysqli_stmt_close($stmt);
         }
         return $transactions;
+    }
+}
+
+if (!function_exists('getCsrfToken')) {
+    function getCsrfToken() {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        if (empty($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
+        return $_SESSION['csrf_token'];
+    }
+}
+
+if (!function_exists('verifyCsrfToken')) {
+    function verifyCsrfToken($token) {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        if (empty($_SESSION['csrf_token']) || !is_string($token) || $token === '') {
+            return false;
+        }
+        return hash_equals($_SESSION['csrf_token'], $token);
+    }
+}
+
+if (!function_exists('getNgoServiceAreas')) {
+    function getNgoServiceAreas($ngoId) {
+        global $con;
+        if (!isset($con) || !$con) {
+            @require_once __DIR__ . '/../Database/db_config.php';
+        }
+        $ngoId = (int)$ngoId;
+        $areas = [];
+        if ($ngoId <= 0 || !isset($con) || !$con) {
+            return $areas;
+        }
+        $stmt = mysqli_prepare($con, "SELECT id, service_area, created_at FROM ngo_service_areas WHERE ngo_id = ? ORDER BY id ASC");
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, "i", $ngoId);
+            mysqli_stmt_execute($stmt);
+            $res = mysqli_stmt_get_result($stmt);
+            if ($res) {
+                while ($row = mysqli_fetch_assoc($res)) {
+                    $areas[] = $row;
+                }
+            }
+            mysqli_stmt_close($stmt);
+        }
+        return $areas;
+    }
+}
+
+if (!function_exists('getNgoDocuments')) {
+    function getNgoDocuments($ngoId) {
+        global $con;
+        if (!isset($con) || !$con) {
+            @require_once __DIR__ . '/../Database/db_config.php';
+        }
+        $ngoId = (int)$ngoId;
+        $documents = [];
+        if ($ngoId <= 0 || !isset($con) || !$con) {
+            return $documents;
+        }
+        $stmt = mysqli_prepare($con, "SELECT id, ngo_id, document_type, document_number, file_path, file_name, file_size, mime_type, created_at FROM ngo_documents WHERE ngo_id = ? ORDER BY created_at DESC, id DESC");
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, "i", $ngoId);
+            mysqli_stmt_execute($stmt);
+            $res = mysqli_stmt_get_result($stmt);
+            if ($res) {
+                while ($row = mysqli_fetch_assoc($res)) {
+                    $documents[] = $row;
+                }
+            }
+            mysqli_stmt_close($stmt);
+        }
+        return $documents;
     }
 }
 

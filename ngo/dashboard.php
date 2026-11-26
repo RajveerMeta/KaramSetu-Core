@@ -338,7 +338,7 @@ ob_start();
                 </div>
             </div>
 
-            <a href="<?= baseUrl('ngo/profile.php') ?>"
+            <a href="<?= baseUrl('?page=ngo-profile&id=' . (int)$ngo_id) ?>"
                class="inline-block bg-white text-forest border border-forest font-bold py-2.5 px-6 rounded-full hover:bg-forest/5 transition-colors shadow-sm">
                 View Public Profile
             </a>

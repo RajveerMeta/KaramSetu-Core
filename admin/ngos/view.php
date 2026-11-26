@@ -27,7 +27,7 @@ ob_start();
             </div>
 
             <span class="inline-flex w-fit items-center px-3 py-1 rounded-full text-sm font-medium border <?= $statusClass ?>">
-                <?= escapeNgoValue($statusLabel) ?>
+                <?= e($statusLabel) ?>
             </span>
         </div>
     </div>
@@ -35,7 +35,7 @@ ob_start();
     <?php if ($alertMessage !== ''): ?>
         <div class="mb-6 p-4 rounded-lg border <?= $alertType === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800' ?>">
             <p class="text-sm font-medium">
-                <?= escapeNgoValue($alertMessage) ?>
+                <?= e($alertMessage) ?>
             </p>
         </div>
     <?php endif; ?>
@@ -56,46 +56,46 @@ ob_start();
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-1">
                         <dt class="text-sm font-medium text-charcoal-light">NGO Name</dt>
                         <dd class="text-sm font-medium text-charcoal sm:col-span-2">
-                            <?= escapeNgoValue($ngo['name']) ?>
+                            <?= e($ngo['name']) ?>
                         </dd>
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-1">
                         <dt class="text-sm font-medium text-charcoal-light">Registration Number</dt>
                         <dd class="text-sm text-charcoal sm:col-span-2">
-                            <?= escapeNgoValue($ngo['registration_number']) ?>
+                            <?= e($ngo['registration_number']) ?>
                         </dd>
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-1">
                         <dt class="text-sm font-medium text-charcoal-light">Organization Type</dt>
                         <dd class="text-sm text-charcoal sm:col-span-2">
-                            <?= escapeNgoValue($ngoType) ?>
+                            <?= e($ngoType) ?>
                         </dd>
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-1">
                         <dt class="text-sm font-medium text-charcoal-light">Established</dt>
                         <dd class="text-sm text-charcoal sm:col-span-2">
-                            <?= escapeNgoValue(date('d M Y', strtotime($ngo['established_date']))) ?>
+                            <?= e(date('d M Y', strtotime($ngo['established_date']))) ?>
                         </dd>
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-1">
                         <dt class="text-sm font-medium text-charcoal-light">Location</dt>
                         <dd class="text-sm text-charcoal sm:col-span-2">
-                            <?= escapeNgoValue($ngo['city']) ?>,
-                            <?= escapeNgoValue($ngo['state']) ?>
-                            - <?= escapeNgoValue($ngo['pincode']) ?>
+                            <?= e($ngo['city']) ?>,
+                            <?= e($ngo['state']) ?>
+                            - <?= e($ngo['pincode']) ?>
                         </dd>
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-1">
                         <dt class="text-sm font-medium text-charcoal-light">Official Email</dt>
                         <dd class="text-sm sm:col-span-2 break-words">
-                            <a href="mailto:<?= escapeNgoValue($ngo['official_email']) ?>"
+                            <a href="mailto:<?= e($ngo['official_email']) ?>"
                                class="text-forest hover:text-gold">
-                                <?= escapeNgoValue($ngo['official_email']) ?>
+                                <?= e($ngo['official_email']) ?>
                             </a>
                         </dd>
                     </div>
@@ -103,7 +103,7 @@ ob_start();
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-1">
                         <dt class="text-sm font-medium text-charcoal-light">Phone</dt>
                         <dd class="text-sm text-charcoal sm:col-span-2">
-                            <?= escapeNgoValue($ngo['phone']) ?>
+                            <?= e($ngo['phone']) ?>
                         </dd>
                     </div>
 
@@ -111,11 +111,11 @@ ob_start();
                         <dt class="text-sm font-medium text-charcoal-light">Website</dt>
                         <dd class="text-sm text-charcoal sm:col-span-2 break-words">
                             <?php if (!empty($ngo['website'])): ?>
-                                <a href="<?= escapeNgoValue($ngo['website']) ?>"
+                                <a href="<?= e($ngo['website']) ?>"
                                    target="_blank"
                                    rel="noopener noreferrer"
                                    class="text-forest hover:text-gold">
-                                    <?= escapeNgoValue($ngo['website']) ?>
+                                    <?= e($ngo['website']) ?>
                                 </a>
                             <?php else: ?>
                                 Not provided
@@ -126,7 +126,7 @@ ob_start();
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-1">
                         <dt class="text-sm font-medium text-charcoal-light">Address</dt>
                         <dd class="text-sm text-charcoal sm:col-span-2">
-                            <?= nl2br(escapeNgoValue($ngo['address'])) ?>
+                            <?= nl2br(e($ngo['address'])) ?>
                         </dd>
                     </div>
 
@@ -150,28 +150,28 @@ ob_start();
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-1">
                             <dt class="text-sm font-medium text-charcoal-light">Name</dt>
                             <dd class="text-sm font-medium text-charcoal sm:col-span-2">
-                                <?= escapeNgoValue($ngo['contact_person']) ?>
+                                <?= e($ngo['contact_person']) ?>
                             </dd>
                         </div>
 
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-1">
                             <dt class="text-sm font-medium text-charcoal-light">Position</dt>
                             <dd class="text-sm text-charcoal sm:col-span-2">
-                                <?= escapeNgoValue($ngo['contact_designation']) ?>
+                                <?= e($ngo['contact_designation']) ?>
                             </dd>
                         </div>
 
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-1">
                             <dt class="text-sm font-medium text-charcoal-light">Account Name</dt>
                             <dd class="text-sm text-charcoal sm:col-span-2">
-                                <?= escapeNgoValue($ngo['account_name'] ?? 'Not linked') ?>
+                                <?= e($ngo['account_name'] ?? 'Not linked') ?>
                             </dd>
                         </div>
 
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-1">
                             <dt class="text-sm font-medium text-charcoal-light">Account Email</dt>
                             <dd class="text-sm text-charcoal sm:col-span-2 break-words">
-                                <?= escapeNgoValue($ngo['account_email'] ?? 'Not linked') ?>
+                                <?= e($ngo['account_email'] ?? 'Not linked') ?>
                             </dd>
                         </div>
 
@@ -191,21 +191,21 @@ ob_start();
                     <div>
                         <h3 class="text-sm font-semibold text-forest mb-1">Primary Cause</h3>
                         <p class="text-sm text-charcoal">
-                            <?= escapeNgoValue($ngo['primary_cause']) ?>
+                            <?= e($ngo['primary_cause']) ?>
                         </p>
                     </div>
 
                     <div>
                         <h3 class="text-sm font-semibold text-forest mb-1">Description</h3>
                         <p class="text-sm text-charcoal leading-relaxed">
-                            <?= nl2br(escapeNgoValue($ngo['description'])) ?>
+                            <?= nl2br(e($ngo['description'])) ?>
                         </p>
                     </div>
 
                     <div>
                         <h3 class="text-sm font-semibold text-forest mb-1">Mission</h3>
                         <p class="text-sm text-charcoal leading-relaxed">
-                            <?= nl2br(escapeNgoValue($ngo['mission'])) ?>
+                            <?= nl2br(e($ngo['mission'])) ?>
                         </p>
                     </div>
 
@@ -213,10 +213,25 @@ ob_start();
                         <div>
                             <h3 class="text-sm font-semibold text-forest mb-1">Impact Summary</h3>
                             <p class="text-sm text-charcoal leading-relaxed">
-                                <?= nl2br(escapeNgoValue($ngo['impact_summary'])) ?>
+                                <?= nl2br(e($ngo['impact_summary'])) ?>
                             </p>
                         </div>
                     <?php endif; ?>
+
+                    <div>
+                        <h3 class="text-sm font-semibold text-forest mb-2">Service Areas</h3>
+                        <?php if (!empty($serviceAreas)): ?>
+                            <div class="flex flex-wrap gap-2">
+                                <?php foreach ($serviceAreas as $area): ?>
+                                    <span class="inline-block bg-ivory border border-gold/30 text-charcoal text-xs px-3 py-1 rounded-full">
+                                        <?= e($area) ?>
+                                    </span>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php else: ?>
+                            <p class="text-sm text-charcoal-light">Not specified</p>
+                        <?php endif; ?>
+                    </div>
                 </div>
             </div>
 
@@ -268,18 +283,18 @@ ob_start();
 
                             <tr class="hover:bg-ivory/30">
                                 <td class="px-6 py-4 text-sm font-medium text-charcoal">
-                                    <?= escapeNgoValue($documentName) ?>
+                                    <?= e($documentName) ?>
                                     <p class="text-xs text-charcoal-light mt-1">
-                                        <?= escapeNgoValue($document['file_name']) ?>
+                                        <?= e($document['file_name']) ?>
                                     </p>
                                 </td>
 
                                 <td class="px-6 py-4 text-sm text-charcoal">
-                                    <?= escapeNgoValue($document['document_number'] ?: 'Not provided') ?>
+                                    <?= e($document['document_number'] ?: 'Not provided') ?>
                                 </td>
 
                                 <td class="px-6 py-4 text-sm text-charcoal">
-                                    <?= escapeNgoValue(date('d M Y', strtotime($document['created_at']))) ?>
+                                    <?= e(date('d M Y', strtotime($document['created_at']))) ?>
                                 </td>
 
                                 <td class="px-6 py-4 text-sm text-right">
@@ -315,13 +330,13 @@ ob_start();
 
                 <p class="text-sm text-charcoal leading-relaxed">
                     Current status:
-                    <strong><?= escapeNgoValue($statusLabel) ?></strong>
+                    <strong><?= e($statusLabel) ?></strong>
                 </p>
 
                 <?php if (!empty($ngo['rejection_reason'])): ?>
                     <p class="mt-3 text-sm text-red-700">
                         <strong>Rejection Reason:</strong>
-                        <?= nl2br(escapeNgoValue($ngo['rejection_reason'])) ?>
+                        <?= nl2br(e($ngo['rejection_reason'])) ?>
                     </p>
                 <?php endif; ?>
             </div>
@@ -361,7 +376,7 @@ ob_start();
         <div class="relative w-full max-w-lg bg-white rounded-xl shadow-xl border border-charcoal/10 p-6">
 
             <h2 id="approveTitle" class="text-xl font-serif font-bold text-forest mb-3">
-                Approve <?= escapeNgoValue($ngo['name']) ?>?
+                Approve <?= e($ngo['name']) ?>?
             </h2>
 
             <p class="text-sm text-charcoal-light mb-6">
@@ -402,7 +417,7 @@ ob_start();
         <div class="relative w-full max-w-lg bg-white rounded-xl shadow-xl border border-charcoal/10 p-6">
 
             <h2 id="rejectTitle" class="text-xl font-serif font-bold text-red-800 mb-3">
-                Reject <?= escapeNgoValue($ngo['name']) ?>?
+                Reject <?= e($ngo['name']) ?>?
             </h2>
 
             <p class="text-sm text-charcoal-light mb-5">

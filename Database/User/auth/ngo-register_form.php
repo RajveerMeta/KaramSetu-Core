@@ -4,6 +4,12 @@ require_once __DIR__ . "/../../db_config.php";
 
 if (isset($_POST["register_ngo"])) {
 
+    function failNgoRegister($msg) {
+        $_SESSION["ngo_register_error"] = $msg;
+        header("Location: " . baseUrl("auth/ngo-register.php"));
+        exit();
+    }
+
     // Organization details
     $name = trim($_POST["ngo_name"] ?? "");
     $registrationNumber = trim($_POST["registration_number"] ?? "");
@@ -41,21 +47,21 @@ if (isset($_POST["register_ngo"])) {
         $address === "" || $city === "" ||
         $state === "" || $pincode === ""
     ) {
-        exit("Please fill all required fields.");
+        failNgoRegister("Please fill all required fields.");
     }
 
     if ($password !== $confirmPassword) {
-        exit("Passwords do not match.");
+        failNgoRegister("Passwords do not match.");
     }
 
     if (!isset($_POST["confirm_info"]) || !isset($_POST["agree_guidelines"])) {
-        exit("Please accept both declarations.");
+        failNgoRegister("Please accept both declarations.");
     }
 
     // Validate service areas
     $rawServiceAreas = $_POST["service_areas"] ?? [];
     if (!is_array($rawServiceAreas) || empty($rawServiceAreas)) {
-        exit("Please select a service area.");
+        failNgoRegister("Please select a service area.");
     }
 
     $serviceAreas = [];
@@ -67,7 +73,7 @@ if (isset($_POST["register_ngo"])) {
     }
 
     if (empty($serviceAreas)) {
-        exit("Please select a service area.");
+        failNgoRegister("Please select a service area.");
     }
 
     // Map NGO type to database enum: enum('trust','society','section_8','other')
@@ -120,29 +126,29 @@ if (isset($_POST["register_ngo"])) {
     foreach ($docConfigs as $field => $config) {
         if (!isset($_FILES[$field]) || $_FILES[$field]['error'] === UPLOAD_ERR_NO_FILE) {
             if ($config['required']) {
-                exit("Please upload the required document: " . $config['label'] . ".");
+                failNgoRegister("Please upload the required document: " . $config['label'] . ".");
             }
             continue;
         }
 
         if ($_FILES[$field]['error'] !== UPLOAD_ERR_OK) {
-            exit("Error uploading " . $config['label'] . ".");
+            failNgoRegister("Error uploading " . $config['label'] . ".");
         }
 
         // Maximum upload size: 5 MB
         if ($_FILES[$field]['size'] > 5 * 1024 * 1024) {
-            exit($config['label'] . " must be smaller than 5 MB.");
+            failNgoRegister($config['label'] . " must be smaller than 5 MB.");
         }
 
         if ($_FILES[$field]['size'] <= 0) {
-            exit($config['label'] . " file is empty.");
+            failNgoRegister($config['label'] . " file is empty.");
         }
 
         $origFileName = basename($_FILES[$field]['name']);
         $ext = strtolower(pathinfo($origFileName, PATHINFO_EXTENSION));
 
         if (!in_array($ext, $allowedExtensions, true)) {
-            exit("Invalid file type for " . $config['label'] . ". Only PDF, JPG, JPEG, and PNG files are allowed.");
+            failNgoRegister("Invalid file type for " . $config['label'] . ". Only PDF, JPG, JPEG, and PNG files are allowed.");
         }
 
         // Verify MIME type using PHP fileinfo
@@ -151,7 +157,7 @@ if (isset($_POST["register_ngo"])) {
         finfo_close($finfo);
 
         if (!isset($allowedMimeTypes[$ext]) || !in_array($mimeType, $allowedMimeTypes[$ext], true)) {
-            exit("Invalid file format for " . $config['label'] . ".");
+            failNgoRegister("Invalid file format for " . $config['label'] . ".");
         }
 
         // Determine valid database document_type enum value
@@ -176,7 +182,7 @@ if (isset($_POST["register_ngo"])) {
     $userCheckSql = "SELECT id FROM users WHERE email = '$emailEsc' LIMIT 1";
     $userCheckRes = mysqli_query($con, $userCheckSql);
     if ($userCheckRes && mysqli_num_rows($userCheckRes) > 0) {
-        exit("Email is already registered.");
+        failNgoRegister("Email is already registered.");
     }
 
     // Check if registration number or official email already registered in ngos table
@@ -184,7 +190,7 @@ if (isset($_POST["register_ngo"])) {
     $ngoCheckSql = "SELECT id FROM ngos WHERE registration_number = '$regNumberEsc' OR official_email = '$emailEsc' LIMIT 1";
     $ngoCheckRes = mysqli_query($con, $ngoCheckSql);
     if ($ngoCheckRes && mysqli_num_rows($ngoCheckRes) > 0) {
-        exit("NGO with this registration number or official email is already registered.");
+        failNgoRegister("NGO with this registration number or official email is already registered.");
     }
 
     // Target upload folder in root uploads/ngo_documents/
@@ -295,6 +301,7 @@ if (isset($_POST["register_ngo"])) {
         // Commit transaction if all steps succeeded
         mysqli_commit($con);
 
+        $_SESSION["register_success"] = "NGO application submitted successfully. Please login to check your application status.";
         header("Location: " . baseUrl("auth/login.php"));
         exit();
 
@@ -308,7 +315,7 @@ if (isset($_POST["register_ngo"])) {
             }
         }
 
-        exit($e->getMessage());
+        failNgoRegister($e->getMessage());
     }
 
 } else {

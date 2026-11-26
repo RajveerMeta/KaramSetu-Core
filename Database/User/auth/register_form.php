@@ -12,22 +12,30 @@ if (isset($_POST["register"])) {
     $confirmPassword = $_POST["password_confirmation"] ?? "";
 
     if ($name == "" || $email == "" || $phone == "" || $password == "") {
-        exit("All fields are required.");
+        $_SESSION["register_error"] = "All fields are required.";
+        header("Location: " . baseUrl('auth/register.php'));
+        exit();
     }
 
     if ($password != $confirmPassword) {
-        exit("Passwords do not match.");
+        $_SESSION["register_error"] = "Passwords do not match.";
+        header("Location: " . baseUrl('auth/register.php'));
+        exit();
     }
 
     if (!isset($_POST["terms"])) {
-        exit("Please accept the Terms and Conditions.");
+        $_SESSION["register_error"] = "Please accept the Terms and Conditions.";
+        header("Location: " . baseUrl('auth/register.php'));
+        exit();
     }
 
     $sql = "SELECT id FROM users WHERE email = '$email'";
     $result = mysqli_query($con, $sql);
 
     if (mysqli_num_rows($result) > 0) {
-        exit("Email already registered.");
+        $_SESSION["register_error"] = "Email already registered.";
+        header("Location: " . baseUrl('auth/register.php'));
+        exit();
     }
 
     mysqli_begin_transaction($con);
@@ -43,13 +51,16 @@ if (isset($_POST["register"])) {
 
         if (mysqli_query($con, $sql)) {
             mysqli_commit($con);
+            $_SESSION["register_success"] = "Account created successfully. Please login.";
             header("Location: " . baseUrl('auth/login.php'));
             exit();
         }
     }
 
     mysqli_rollback($con);
-    exit("Registration failed.");
+    $_SESSION["register_error"] = "Registration failed.";
+    header("Location: " . baseUrl('auth/register.php'));
+    exit();
 
 } else {
     header("Location: " . baseUrl('auth/register.php'));

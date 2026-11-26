@@ -53,9 +53,9 @@
                 <h4 class="text-white font-bold mb-4 uppercase text-xs tracking-wider">Organization</h4>
                 <ul class="space-y-3 text-sm">
                     <li><a href="<?= baseUrl('auth/ngo-register.php') ?>" class="hover:text-gold transition-colors">Register NGO</a></li>
-                    <li><a href="#" class="hover:text-gold transition-colors">NGO Login</a></li>
-                    <li><a href="#" class="hover:text-gold transition-colors">About</a></li>
-                    <li><a href="#" class="hover:text-gold transition-colors">Contact</a></li>
+                    <li><a href="<?= baseUrl('auth/login.php') ?>" class="hover:text-gold transition-colors">NGO Login</a></li>
+                    <li><a href="<?= baseUrl('?page=about') ?>" class="hover:text-gold transition-colors">About</a></li>
+                    <li><a href="<?= baseUrl('?page=about') ?>" class="hover:text-gold transition-colors">Contact</a></li>
                 </ul>
             </div>
             
@@ -64,9 +64,9 @@
         <div class="border-t border-forest pt-8 flex flex-col md:flex-row justify-between items-center text-xs">
             <p>&copy; <?= date('Y') ?> KarmaSetu. All rights reserved.</p>
             <div class="flex space-x-4 mt-4 md:mt-0">
-                <a href="#" class="hover:text-gold transition-colors">Privacy Policy</a>
-                <a href="#" class="hover:text-gold transition-colors">Terms of Service</a>
-                <a href="#" class="hover:text-gold transition-colors">Transparency</a>
+                <a href="<?= baseUrl('?page=about') ?>" class="hover:text-gold transition-colors">Privacy Policy</a>
+                <a href="<?= baseUrl('?page=about') ?>" class="hover:text-gold transition-colors">Terms of Service</a>
+                <a href="<?= baseUrl('?page=about') ?>" class="hover:text-gold transition-colors">Transparency</a>
             </div>
         </div>
     </div>

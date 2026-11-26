@@ -15,7 +15,8 @@ $pages = [
     'events' => 'pages/events.php',
     'event-details' => 'pages/event-details.php',
     'contribute' => 'pages/contribute.php',
-    'leaderboard' => 'pages/leaderboard.php'
+    'leaderboard' => 'pages/leaderboard.php',
+    'change-password' => 'pages/change-password.php'
 ];
 
 if (!array_key_exists($page, $pages)) {

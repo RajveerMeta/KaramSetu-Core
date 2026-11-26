@@ -309,7 +309,7 @@ while ($row = mysqli_fetch_object($result)) {
                         </div>
                         
                         <div>
-                            <a href="<?= baseUrl('pages/leaderboard.php') ?>" class="inline-flex items-center text-sm font-bold text-forest hover:text-gold transition-colors">
+                            <a href="<?= baseUrl('?page=leaderboard') ?>" class="inline-flex items-center text-sm font-bold text-forest hover:text-gold transition-colors">
                                 View Leaderboard
                                 <svg class="ml-1.5 w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -387,7 +387,7 @@ while ($row = mysqli_fetch_object($result)) {
                 <div class="bg-white rounded-2xl shadow-sm border border-gold/20 overflow-hidden">
                     <div class="p-6 md:p-8 flex flex-col md:flex-row justify-between items-center border-b border-charcoal/5">
                         <h2 class="text-2xl md:text-4xl font-serif font-bold text-forest">Recent Contributions</h2>
-                        <a href="#" class="text-sm font-bold text-forest hover:text-gold transition-colors hidden sm:block">View All Contributions</a>
+                        <a href="<?= baseUrl('user/contributions.php') ?>" class="text-sm font-bold text-forest hover:text-gold transition-colors hidden sm:block">View All Contributions</a>
                     </div>
                     
                     <div class="divide-y divide-charcoal/5">
@@ -408,7 +408,7 @@ while ($row = mysqli_fetch_object($result)) {
                                     <p class="font-bold text-charcoal"><?= e($contribution->amount) ?></p>
                                 </div>
                                 
-                                <a href="#" class="inline-flex items-center justify-center px-4 py-2 border border-charcoal/10 text-xs font-bold rounded-lg text-forest bg-white hover:bg-ivory-dark transition-colors shadow-sm">
+                                <a href="<?= baseUrl('user/contribution-details.php?id=' . (int)$contribution->id) ?>" class="inline-flex items-center justify-center px-4 py-2 border border-charcoal/10 text-xs font-bold rounded-lg text-forest bg-white hover:bg-ivory-dark transition-colors shadow-sm">
                                     View Details
                                 </a>
                             </div>
@@ -418,7 +418,7 @@ while ($row = mysqli_fetch_object($result)) {
                     </div>
                     
                     <div class="p-4 md:p-8 sm:hidden border-t border-charcoal/5">
-                        <a href="#" class="block text-center text-sm font-bold text-forest hover:text-gold transition-colors">View All Contributions</a>
+                        <a href="<?= baseUrl('user/contributions.php') ?>" class="block text-center text-sm font-bold text-forest hover:text-gold transition-colors">View All Contributions</a>
                     </div>
                 </div>
 
@@ -455,7 +455,7 @@ while ($row = mysqli_fetch_object($result)) {
                                 </div>
                             </div>
                             <div class="mt-5">
-                                <a href="#" class="block text-center w-full px-4 py-2.5 border border-charcoal/10 text-sm font-bold rounded-lg text-charcoal bg-white hover:bg-ivory transition-colors shadow-sm">
+                                <a href="<?= baseUrl('user/events.php') ?>" class="block text-center w-full px-4 py-2.5 border border-charcoal/10 text-sm font-bold rounded-lg text-charcoal bg-white hover:bg-ivory transition-colors shadow-sm">
                                     View Ticket
                                 </a>
                             </div>
@@ -542,7 +542,7 @@ while ($row = mysqli_fetch_object($result)) {
                         </div>
                     </div>
 
-                    <a href="#" class="block text-center w-full px-4 py-2.5 border border-gold/30 text-sm font-bold rounded-full text-forest hover:bg-gold hover:text-white transition-colors shadow-sm hover:shadow-md">
+                    <a href="<?= baseUrl('?page=leaderboard') ?>" class="block text-center w-full px-4 py-2.5 border border-gold/30 text-sm font-bold rounded-full text-forest hover:bg-gold hover:text-white transition-colors shadow-sm hover:shadow-md">
                         View Leaderboard
                     </a>
                 </div>

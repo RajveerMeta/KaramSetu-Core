@@ -75,6 +75,14 @@ ob_start();
                 </div>
 
                 <div class="pt-2">
+                    <?php
+                    if (isset($_SESSION["register_error"])) {
+                        echo '<p class="text-red-600 text-sm mb-3">'
+                            . e($_SESSION["register_error"])
+                            . '</p>';
+                        unset($_SESSION["register_error"]);
+                    }
+                    ?>
                     <button type="submit"  name="register" 
                         class="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-full text-white bg-forest hover:bg-forest-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-forest transition-all shadow-md hover:shadow-lg">
                         Create Account

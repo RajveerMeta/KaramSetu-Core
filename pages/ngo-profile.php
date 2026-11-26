@@ -203,9 +203,9 @@ if ($oppRes) {
             
             <!-- 04. PRIMARY ACTION AREA -->
             <div class="flex flex-col gap-3 w-full sm:w-auto mt-6 md:mt-0">
-                <button class="bg-forest text-ivory hover:bg-forest-light px-8 py-3.5 rounded-full font-bold transition-colors text-center shadow-md">
+                <a href="<?= baseUrl('?page=contribute&ngo_id=' . e($ngo['id'])) ?>" class="bg-forest text-ivory hover:bg-forest-light px-8 py-3.5 rounded-full font-bold transition-colors text-center shadow-md">
                     Support This NGO
-                </button>
+                </a>
                 <a href="#active-causes" class="bg-white border border-forest/20 text-forest hover:bg-ivory px-8 py-3.5 rounded-full font-medium transition-colors text-center">
                     View Causes
                 </a>
@@ -344,7 +344,7 @@ if ($oppRes) {
 
             <?php foreach($ngo['events'] as $event): ?>
 
-                <div class="border border-gold/20 rounded-2xl p-6 bg-ivory hover:bg-white hover:border-forest/40 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 ease-out group cursor-pointer">
+                <a href="<?= baseUrl('?page=event-details&id=' . (int)$event['id']) ?>" class="block border border-gold/20 rounded-2xl p-6 bg-ivory hover:bg-white hover:border-forest/40 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 ease-out group cursor-pointer">
 
                     <div class="flex items-start gap-5">
 
@@ -391,7 +391,7 @@ if ($oppRes) {
 
                     </div>
 
-                </div>
+                </a>
 
             <?php endforeach; ?>
 
@@ -450,7 +450,7 @@ if ($oppRes) {
             KarmaSetu provides multiple ways to contribute. Whether you give money, items, or time, you make a difference.
         </p>
         <div class="flex flex-col sm:flex-row justify-center gap-4">
-            <a href="<?= baseUrl('?page=contribute&id=' . e($ngo['id'])) ?>" class="bg-gold text-forest hover:bg-white px-8 py-3.5 rounded-full font-bold transition-colors inline-block text-center">
+            <a href="<?= baseUrl('?page=contribute&ngo_id=' . e($ngo['id'])) ?>" class="bg-gold text-forest hover:bg-white px-8 py-3.5 rounded-full font-bold transition-colors inline-block text-center">
                 Support This NGO &rarr;
             </a>
             <a href="#active-causes" class="bg-transparent border border-ivory/30 hover:border-ivory hover:bg-white/5 px-8 py-3.5 rounded-full font-medium transition-colors inline-block text-center">

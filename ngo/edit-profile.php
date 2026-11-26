@@ -124,65 +124,112 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $ngo_id > 0) {
     } elseif (!in_array($ngo_type, ['trust', 'society', 'section_8', 'other'])) {
         $errorMsg = 'Please select a valid NGO type.';
     } else {
+        $duplicateError = false;
 
-        // Escape values for MySQL
-        $ngo_name_db = mysqli_real_escape_string($con, $ngo_name);
-        $registration_number_db = mysqli_real_escape_string($con, $registration_number);
-        $established_date_db = mysqli_real_escape_string($con, $established_date);
-        $ngo_type_db = mysqli_real_escape_string($con, $ngo_type);
-        $primary_cause_db = mysqli_real_escape_string($con, $primary_cause);
-        $description_db = mysqli_real_escape_string($con, $description);
+        $emailChkStmt = mysqli_prepare($con, "SELECT id FROM users WHERE LOWER(email) = LOWER(?) AND id <> ? LIMIT 1");
+        if ($emailChkStmt) {
+            mysqli_stmt_bind_param($emailChkStmt, "si", $email, $user_id);
+            mysqli_stmt_execute($emailChkStmt);
+            $emailChkRes = mysqli_stmt_get_result($emailChkStmt);
+            if ($emailChkRes && mysqli_num_rows($emailChkRes) > 0) {
+                $errorMsg = 'This email address is already used by another account.';
+                $duplicateError = true;
+            }
+            mysqli_stmt_close($emailChkStmt);
+        }
 
-        $email_db = mysqli_real_escape_string($con, $email);
-        $phone_db = mysqli_real_escape_string($con, $phone);
-        $website_db = mysqli_real_escape_string($con, $website);
-        $contact_person_db = mysqli_real_escape_string($con, $contact_person);
-        $designation_db = mysqli_real_escape_string($con, $designation);
+        if (!$duplicateError) {
+            $ngoChkStmt = mysqli_prepare($con, "SELECT id FROM ngos WHERE (registration_number = ? OR LOWER(official_email) = LOWER(?)) AND id <> ? LIMIT 1");
+            if ($ngoChkStmt) {
+                mysqli_stmt_bind_param($ngoChkStmt, "ssi", $registration_number, $email, $ngo_id);
+                mysqli_stmt_execute($ngoChkStmt);
+                $ngoChkRes = mysqli_stmt_get_result($ngoChkStmt);
+                if ($ngoChkRes && mysqli_num_rows($ngoChkRes) > 0) {
+                    $errorMsg = 'Another NGO with this registration number or official email already exists.';
+                    $duplicateError = true;
+                }
+                mysqli_stmt_close($ngoChkStmt);
+            }
+        }
 
-        $address_db = mysqli_real_escape_string($con, $address);
-        $city_db = mysqli_real_escape_string($con, $city);
-        $state_db = mysqli_real_escape_string($con, $state);
-        $pincode_db = mysqli_real_escape_string($con, $pincode);
+        if (!$duplicateError) {
+            mysqli_begin_transaction($con);
 
-        $mission_db = mysqli_real_escape_string($con, $mission);
-        $impact_db = mysqli_real_escape_string($con, $impact);
-
-        // Update NGO profile
-        $updateNgo = mysqli_query(
-            $con,
-            "UPDATE ngos SET
-                name = '$ngo_name_db',
-                registration_number = '$registration_number_db',
-                established_date = '$established_date_db',
-                ngo_type = '$ngo_type_db',
-                primary_cause = '$primary_cause_db',
-                description = '$description_db',
-                official_email = '$email_db',
-                phone = '$phone_db',
-                website = " . ($website_db !== '' ? "'$website_db'" : "NULL") . ",
-                contact_person = '$contact_person_db',
-                contact_designation = '$designation_db',
-                address = '$address_db',
-                city = '$city_db',
-                state = '$state_db',
-                pincode = '$pincode_db',
-                mission = '$mission_db',
-                impact_summary = '$impact_db'
-             WHERE id = $ngo_id"
-        );
-
-        if ($updateNgo) {
-
-            // Update user name and phone
-            $updateUser = mysqli_query(
+            $websiteParam = $website !== '' ? $website : null;
+            $updateNgo = false;
+            $ngoStmt = mysqli_prepare(
                 $con,
-                "UPDATE users SET
-                    name = '$ngo_name_db',
-                    phone = '$phone_db'
-                 WHERE id = $user_id"
+                "UPDATE ngos SET
+                    name = ?,
+                    registration_number = ?,
+                    established_date = ?,
+                    ngo_type = ?,
+                    primary_cause = ?,
+                    description = ?,
+                    official_email = ?,
+                    phone = ?,
+                    website = ?,
+                    contact_person = ?,
+                    contact_designation = ?,
+                    address = ?,
+                    city = ?,
+                    state = ?,
+                    pincode = ?,
+                    mission = ?,
+                    impact_summary = ?,
+                    updated_at = NOW()
+                 WHERE id = ?"
             );
 
-            if ($updateUser) {
+            if ($ngoStmt) {
+                mysqli_stmt_bind_param(
+                    $ngoStmt,
+                    "sssssssssssssssssi",
+                    $ngo_name,
+                    $registration_number,
+                    $established_date,
+                    $ngo_type,
+                    $primary_cause,
+                    $description,
+                    $email,
+                    $phone,
+                    $websiteParam,
+                    $contact_person,
+                    $designation,
+                    $address,
+                    $city,
+                    $state,
+                    $pincode,
+                    $mission,
+                    $impact,
+                    $ngo_id
+                );
+                $updateNgo = mysqli_stmt_execute($ngoStmt);
+                mysqli_stmt_close($ngoStmt);
+            }
+
+            $updateUser = false;
+            if ($updateNgo) {
+                $userStmt = mysqli_prepare(
+                    $con,
+                    "UPDATE users SET
+                        name = ?,
+                        email = ?,
+                        phone = ?,
+                        updated_at = NOW()
+                     WHERE id = ? AND role = 'ngo'"
+                );
+                if ($userStmt) {
+                    mysqli_stmt_bind_param($userStmt, "sssi", $contact_person, $email, $phone, $user_id);
+                    $updateUser = mysqli_stmt_execute($userStmt);
+                    mysqli_stmt_close($userStmt);
+                }
+            }
+
+            if ($updateNgo && $updateUser) {
+                mysqli_commit($con);
+                $_SESSION['user_name'] = $contact_person;
+                $_SESSION['user_email'] = $email;
 
                 // Document upload settings
                 $uploadDirectory = __DIR__ . '/../uploads/ngo_documents/';
@@ -369,11 +416,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $ngo_id > 0) {
                 }
 
             } else {
-                $errorMsg = 'NGO details were updated, but user information could not be updated.';
+                mysqli_rollback($con);
+                $errorMsg = 'Unable to update NGO profile. Please check your details and try again.';
             }
-
-        } else {
-            $errorMsg = 'Unable to update NGO profile. Please check your details and try again.';
         }
     }
 }

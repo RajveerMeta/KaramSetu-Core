@@ -28,6 +28,33 @@ $(document).ready(function () {
     return errorElement;
   }
 
+  function validateDateRange() {
+    const startDate = $("#start_date").val();
+    const endDate = $("#end_date").val();
+
+    const endField = $("#end_date");
+
+    if (!startDate || !endDate) {
+      return true;
+    }
+
+    const errorElement = getErrorElement(endField);
+
+    if (new Date(endDate) <= new Date(startDate)) {
+      errorElement.text("End date must be after the start date.").show();
+
+      endField.addClass("is-invalid").removeClass("is-valid");
+
+      return false;
+    }
+
+    errorElement.text("").hide();
+
+    endField.removeClass("is-invalid").addClass("is-valid");
+
+    return true;
+  }
+
   function validateField(input) {
     let field = $(input);
 
@@ -133,32 +160,6 @@ $(document).ready(function () {
       return true;
     }
 
-    function validateDateRange() {
-      const startDate = $("#start_date").val();
-      const endDate = $("#end_date").val();
-
-      const endField = $("#end_date");
-
-      if (!startDate || !endDate) {
-        return true;
-      }
-
-      const errorElement = getErrorElement(endField);
-
-      if (new Date(endDate) <= new Date(startDate)) {
-        errorElement.text("End date must be after the start date.").show();
-
-        endField.addClass("is-invalid").removeClass("is-valid");
-
-        return false;
-      }
-
-      errorElement.text("").hide();
-
-      endField.removeClass("is-invalid").addClass("is-valid");
-
-      return true;
-    }
     /* =========================
        REQUIRED
     ========================= */
@@ -373,7 +374,7 @@ $(document).ready(function () {
       field.is("select") &&
       validationType.includes("required")
     ) {
-      if (value === "" || field.find("option:selected").index() === 0) {
+      if (value === "") {
         errorMessage = "Please select an option.";
       }
     }

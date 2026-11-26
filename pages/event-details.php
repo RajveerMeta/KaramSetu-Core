@@ -731,7 +731,7 @@ $eventEndTime = date('h:i A', strtotime($event['end_time']));
                         </div>
                     </div>
 
-                    <a href="<?= baseUrl('?page=contribute&id=1') ?>" class="w-full bg-white border-2 border-forest text-forest hover:bg-forest hover:text-ivory px-4 py-3.5 rounded-xl font-bold transition-colors text-sm flex flex-col md:flex-row items-center justify-center gap-2">
+                    <a href="<?= baseUrl('?page=contribute&ngo_id=' . (int)$event['ngo_id']) ?>" class="w-full bg-white border-2 border-forest text-forest hover:bg-forest hover:text-ivory px-4 py-3.5 rounded-xl font-bold transition-colors text-sm flex flex-col md:flex-row items-center justify-center gap-2">
                         Donate Now
                         <svg class="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"></path></svg>
                     </a>

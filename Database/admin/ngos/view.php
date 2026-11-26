@@ -187,6 +187,9 @@ while ($document = mysqli_fetch_assoc($documentsResult)) {
 
 mysqli_stmt_close($stmt);
 
+$serviceAreaRows = getNgoServiceAreas($ngoId);
+$serviceAreas = array_column($serviceAreaRows, 'service_area');
+
 /* Status badge */
 $statusClasses = [
     'pending' => 'bg-amber-100 text-amber-800 border-amber-200',

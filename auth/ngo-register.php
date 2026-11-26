@@ -35,13 +35,19 @@ ob_start();
                 </div>
                 
                 <div>
-                    <a href="/" class="inline-block bg-forest text-white hover:bg-forest-dark px-8 py-3 rounded-full font-bold transition-all shadow-md hover:shadow-lg">View Application Status</a>
+                    <a href="<?= baseUrl('ngo/application-status.php') ?>" class="inline-block bg-forest text-white hover:bg-forest-dark px-8 py-3 rounded-full font-bold transition-all shadow-md hover:shadow-lg">View Application Status</a>
                 </div>
             </div>
         </div>
 
         <!-- Application Form -->
         <div id="ngoApplicationFormContainer" class="bg-white rounded-3xl shadow-sm border border-gold/20 overflow-hidden">
+        <?php if (!empty($_SESSION['ngo_register_error'])): ?>
+            <div class="mx-6 md:mx-10 mt-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm font-medium">
+                <?= e($_SESSION['ngo_register_error']) ?>
+            </div>
+            <?php unset($_SESSION['ngo_register_error']); ?>
+        <?php endif; ?>
         <form id="ngoApplicationForm" action="<?= baseUrl('Database/User/auth/ngo-register_form.php') ?>" enctype="multipart/form-data" method="POST" class="p-6 md:p-10 space-y-12 validation-form" novalidate>                
                 
                 <!-- Section 01: Organization Details -->

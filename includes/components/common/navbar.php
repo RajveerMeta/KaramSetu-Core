@@ -43,10 +43,25 @@ $authUserRole = strtolower(trim($_SESSION['user_role'] ?? 'user'));
                     <div id="userDropdownMenu" style="display:none;" class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-charcoal/10 overflow-hidden z-50 py-2">
                         <?php if ($authUserRole === 'admin'): ?>
                             <a href="<?= baseUrl('admin/dashboard.php') ?>" class="block px-4 py-2 text-sm text-charcoal hover:bg-ivory-dark hover:text-forest transition-colors">Admin Dashboard</a>
-                            <a href="<?= baseUrl('admin/profile.php') ?>" class="block px-4 py-2 text-sm text-charcoal hover:bg-ivory-dark hover:text-forest transition-colors">Profile</a>
+                            <a href="<?= baseUrl('admin/dashboard.php') ?>" class="block px-4 py-2 text-sm text-charcoal hover:bg-ivory-dark hover:text-forest transition-colors">Profile</a>
                         <?php elseif ($authUserRole === 'ngo'): ?>
-                            <a href="<?= baseUrl('ngo/dashboard.php') ?>" class="block px-4 py-2 text-sm text-charcoal hover:bg-ivory-dark hover:text-forest transition-colors">NGO Dashboard</a>
-                            <a href="<?= baseUrl('ngo/profile.php') ?>" class="block px-4 py-2 text-sm text-charcoal hover:bg-ivory-dark hover:text-forest transition-colors">Manage Profile</a>
+                            <?php
+                            $navUserId = (int)($_SESSION['user_id'] ?? 0);
+                            $navUserStat = $navUserId > 0 ? getUserAccountStatus($navUserId) : null;
+                            $navNgoRec = $navUserId > 0 ? getNgoRecordForUser($navUserId) : null;
+                            $navNgoApproved = (
+                                $navUserStat &&
+                                $navNgoRec &&
+                                strtolower(trim($navUserStat['status'] ?? '')) === 'active' &&
+                                strtolower(trim($navNgoRec['verification_status'] ?? '')) === 'approved'
+                            );
+                            ?>
+                            <?php if ($navNgoApproved): ?>
+                                <a href="<?= baseUrl('ngo/dashboard.php') ?>" class="block px-4 py-2 text-sm text-charcoal hover:bg-ivory-dark hover:text-forest transition-colors">NGO Dashboard</a>
+                                <a href="<?= baseUrl('ngo/profile.php') ?>" class="block px-4 py-2 text-sm text-charcoal hover:bg-ivory-dark hover:text-forest transition-colors">Manage Profile</a>
+                            <?php else: ?>
+                                <a href="<?= baseUrl('ngo/application-status.php') ?>" class="block px-4 py-2 text-sm text-charcoal hover:bg-ivory-dark hover:text-forest transition-colors">Application Status</a>
+                            <?php endif; ?>
                         <?php else: ?>
                             <a href="<?= baseUrl('user/dashboard.php') ?>" class="block px-4 py-2 text-sm text-charcoal hover:bg-ivory-dark hover:text-forest transition-colors">My Dashboard</a>
                             <a href="<?= baseUrl('user/contributions.php') ?>" class="block px-4 py-2 text-sm text-charcoal hover:bg-ivory-dark hover:text-forest transition-colors">My Contributions</a>

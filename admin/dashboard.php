@@ -131,7 +131,7 @@ ob_start();
             <div class="bg-white rounded-xl border border-charcoal/10 shadow-sm overflow-hidden">
                 <div class="px-6 py-4 border-b border-charcoal/10 flex justify-between items-center">
                     <h2 class="text-lg font-serif font-bold text-forest">Recent Contributions</h2>
-                    <a href="<?= baseUrl('admin/contributions.php') ?>" class="text-sm font-medium text-forest hover:text-gold transition-colors">View All</a>
+                    <a href="<?= baseUrl('admin/contributions/index.php') ?>" class="text-sm font-medium text-forest hover:text-gold transition-colors">View All</a>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
@@ -237,7 +237,7 @@ ob_start();
                 </div>
                 
                 <div class="mt-6 pt-6 border-t border-charcoal/5">
-                    <a href="<?= baseUrl('admin/activity.php') ?>" class="text-sm font-medium text-forest hover:text-gold transition-colors flex items-center justify-center w-full">
+                    <a href="<?= baseUrl('admin/reports/index.php') ?>" class="text-sm font-medium text-forest hover:text-gold transition-colors flex items-center justify-center w-full">
                         View Complete Log
                     </a>
                 </div>
